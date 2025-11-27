@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "Dudhiya",
+    "slug": "MilkManagementApp",
+    "version": "1.0.7",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#00000000",
+      "translucent": true,
+      "barStyle": "light-content"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.elusifataehyung.MilkManagementApp",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "106.51.142.222.sslip.io": {
+              "NSExceptionAllowsInsecureHTTPLoads": true,
+              "NSIncludesSubdomains": true
+            }
+          }
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.elusifataehyung.MilkManagementApp",
+      "versionCode": 5,
+      "permissions": [
+        "INTERNET",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-system-ui",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "ndkVersion": "26.1.10909125"
+          }
+        }
+      ],
+      "expo-localization",
+      "expo-video"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9841a7dd-20d2-4dba-9589-9344153a93a6"
+      }
+    }
+  }
+}

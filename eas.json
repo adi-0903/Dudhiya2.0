@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 15.0.12",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "prebuildCommand": "npx expo prebuild --platform android"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "prebuildCommand": "npx expo prebuild --platform android"
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "prebuildCommand": "npx expo prebuild --platform android"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
