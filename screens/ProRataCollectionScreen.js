@@ -23,11 +23,13 @@ import BottomNav from '../components/BottomNav';
 import { useTranslation } from 'react-i18next';
 import useKeyboardDismiss from '../hooks/useKeyboardDismiss';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker';
+import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS } from '../utils/dairySettings';
 
 const ProRataCollectionScreen = ({ navigation }) => {
   const [walletBalance, setWalletBalance] = useState("₹8"); // Replace with actual wallet balance
   const [fat, setFat] = useState('6.5');
-  const [snf, setSnf] = useState('9.0');
+  const [snf, setSnf] = useState(DEFAULT_DAIRY_SETTINGS.baseSnf);
   const [currentRate, setCurrentRate] = useState(null);
   const [isLoadingRate, setIsLoadingRate] = useState(true);
   const [showSnfModal, setShowSnfModal] = useState(false);
@@ -44,7 +46,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
   // New: threshold-based step rates
   const [fatStepUpThresholds, setFatStepUpThresholds] = useState([]); // [{threshold: '6.5', rate: '0.27'}]
   const [snfStepDownThresholds, setSnfStepDownThresholds] = useState([]); // [{threshold: '8.5', rate: '0.39'}]
-  const [fatSnfRatio, setFatSnfRatio] = useState('60_40'); // '60_40' or '52_48'
+  const [fatSnfRatio, setFatSnfRatio] = useState(DEFAULT_DAIRY_SETTINGS.fatSnfRatio);
   const [errors, setErrors] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -52,6 +54,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
     snf: true,  // SNF selected by default
     clr: false
   });
+  const [dairyDetails, setDairyDetails] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
@@ -96,7 +99,8 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const [pendingRateType, setPendingRateType] = useState(null);
   
   // State for rate type in the rate settings modal
-  const [tempRateType, setTempRateType] = useState('fat_snf');
+  const [tempRateType, setTempRateType] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
+  const [rateTypePickerValue, setRateTypePickerValue] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
 
   // Focus states to control text alignment (placeholder centered by default)
   const [isFatFocused, setIsFatFocused] = useState(false);
@@ -122,12 +126,12 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const [tempProRataSnfThreshold, setTempProRataSnfThreshold] = useState(proRataSnfThreshold);
 
   // CLR to SNF conversion factor state (0.14 or 0.50)
-  const [clrConversionFactor, setClrConversionFactor] = useState('0.14');
+  const [clrConversionFactor, setClrConversionFactor] = useState(DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
   
   // Change Rates modal state
   const [showChangeRatesModal, setShowChangeRatesModal] = useState(false);
-  const [tempBaseSnf, setTempBaseSnf] = useState('9.0');
-  const [tempClrConversionFactor, setTempClrConversionFactor] = useState('0.14');
+  const [tempBaseSnf, setTempBaseSnf] = useState(DEFAULT_DAIRY_SETTINGS.baseSnf);
+  const [tempClrConversionFactor, setTempClrConversionFactor] = useState(DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -154,42 +158,6 @@ const ProRataCollectionScreen = ({ navigation }) => {
     setTempProRataSnfThreshold(proRataSnfThreshold);
     setShowRateChartModal(true);
   };
-
-  // Persist and load Base SNF (9.0 / 8.5) selection for Pro Rata
-  useEffect(() => {
-    const loadBaseSnf = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@base_snf');
-        if (saved === '9.0' || saved === '8.5') {
-          setSnf(saved);
-        } else {
-          await AsyncStorage.setItem('@base_snf', '9.0');
-          setSnf('9.0');
-        }
-      } catch (e) {
-        setSnf('9.0');
-      }
-    };
-    loadBaseSnf();
-  }, []);
-
-  // Persist and load Fat/SNF ratio (60/40 or 52/48)
-  useEffect(() => {
-    const loadFatSnfRatio = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@fat_snf_ratio');
-        if (saved === '60_40' || saved === '52_48') {
-          setFatSnfRatio(saved);
-        } else {
-          await AsyncStorage.setItem('@fat_snf_ratio', '60_40');
-          setFatSnfRatio('60_40');
-        }
-      } catch (e) {
-        // keep default
-      }
-    };
-    loadFatSnfRatio();
-  }, []);
 
   // Persist and load step rate inputs (Fat Stepup and SNF Stepdown)
   useEffect(() => {
@@ -552,23 +520,27 @@ const ProRataCollectionScreen = ({ navigation }) => {
     loadProRataThresholds();
   }, []);
 
-  // Persist and load CLR conversion factor (0.14 or 0.50)
-  useEffect(() => {
-    const loadClrConversionFactor = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@clr_conversion_factor');
-        if (saved === '0.14' || saved === '0.50') {
-          setClrConversionFactor(saved);
-        } else {
-          await AsyncStorage.setItem('@clr_conversion_factor', '0.14');
-          setClrConversionFactor('0.14');
-        }
-      } catch (e) {
-        setClrConversionFactor('0.14');
-      }
-    };
-    loadClrConversionFactor();
-  }, []);
+  const getRadiosForRateType = (rateType) => {
+    if (rateType === 'fat_snf') {
+      return { snf: true, clr: false };
+    }
+    if (rateType === 'fat_clr') {
+      return { snf: false, clr: true };
+    }
+    return { snf: false, clr: false };
+  };
+
+  const RATE_TYPES = [
+    { label: 'FAT + SNF', value: 'fat_snf' },
+    { label: 'FAT + CLR', value: 'fat_clr' },
+    { label: 'KG', value: 'kg_only' },
+    { label: 'Liters', value: 'liters_only' }
+  ];
+
+  const RATE_TYPE_LABELS = RATE_TYPES.reduce((acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+  }, {});
 
   // Add useFocusEffect to fetch rate when screen comes into focus
   useFocusEffect(
@@ -584,24 +556,78 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const fetchDairyInfo = async () => {
     try {
       const dairyInfo = await getDairyInfo();
-      if (dairyInfo && dairyInfo.rate_type) {
-        // Set radio buttons based on rate_type
-        if (dairyInfo.rate_type === 'fat_snf') {
-          setSelectedRadios({
-            snf: true,
-            clr: false
-          });
-          setTempRateType('fat_snf');
-        } else if (dairyInfo.rate_type === 'fat_clr') {
-          setSelectedRadios({
-            snf: false,
-            clr: true
-          });
-          setTempRateType('fat_clr');
-        }
+      const sanitizedInfo = normalizeDairyInfo(dairyInfo);
+      if (sanitizedInfo) {
+        setDairyDetails(sanitizedInfo);
+        const baseSnfValue = sanitizedInfo.base_snf || DEFAULT_DAIRY_SETTINGS.baseSnf;
+        setSnf(baseSnfValue);
+        setTempBaseSnf(baseSnfValue);
+
+        const ratioValue = sanitizedInfo.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
+        setFatSnfRatio(ratioValue);
+        setTempFatSnfRatio(ratioValue);
+
+        const clrValue = sanitizedInfo.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
+        setClrConversionFactor(clrValue);
+        setTempClrConversionFactor(clrValue);
+
+        const resolvedRateType = sanitizedInfo.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
+        setTempRateType(resolvedRateType);
+        setRateTypePickerValue(resolvedRateType);
+        setSelectedRadios(getRadiosForRateType(resolvedRateType));
       }
     } catch (error) {
       console.error('Error fetching dairy info:', error);
+      return null;
+    }
+    return null;
+  };
+
+  const ensureDairyDetailsForUpdate = async () => {
+    if (dairyDetails?.id) {
+      return dairyDetails;
+    }
+    return await fetchDairyInfo();
+  };
+
+  const persistDairySettings = async (overrides = {}, options = {}) => {
+    const { skipIfUnchanged = false } = options;
+    try {
+      const current = await ensureDairyDetailsForUpdate();
+      if (!current?.id) {
+        return null;
+      }
+
+      const merged = { ...current, ...overrides };
+      if (
+        skipIfUnchanged &&
+        Object.keys(overrides).every((key) => String(current[key]) === String(merged[key]))
+      ) {
+        return current;
+      }
+
+      const payload = buildDairyUpdatePayload(current, overrides);
+      if (!payload) {
+        return current;
+      }
+
+      const updated = await updateDairyInfo(payload);
+      const sanitized = normalizeDairyInfo(updated);
+      setDairyDetails(sanitized);
+      setSnf(sanitized.base_snf || DEFAULT_DAIRY_SETTINGS.baseSnf);
+      setTempBaseSnf(sanitized.base_snf || DEFAULT_DAIRY_SETTINGS.baseSnf);
+      setFatSnfRatio(sanitized.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio);
+      setTempFatSnfRatio(sanitized.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio);
+      setClrConversionFactor(sanitized.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
+      setTempClrConversionFactor(sanitized.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
+      const resolvedRateType = sanitized.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
+      setTempRateType(resolvedRateType);
+      setRateTypePickerValue(resolvedRateType);
+      setSelectedRadios(getRadiosForRateType(resolvedRateType));
+      return sanitized;
+    } catch (error) {
+      console.error('Error saving dairy settings:', error);
+      return null;
     }
   };
 
@@ -759,9 +785,10 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const handleBaseSnfToggle = async (value) => {
     try {
       setSnf(value);
-      await AsyncStorage.setItem('@base_snf', value);
-    } catch (e) {
-      // ignore persist errors silently
+      setTempBaseSnf(value);
+      await persistDairySettings({ base_snf: value }, { skipIfUnchanged: true });
+    } catch (error) {
+      console.error('Error saving Base SNF:', error);
     }
   };
 
@@ -769,7 +796,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const handleFatSnfRatioChange = async (value) => {
     try {
       setFatSnfRatio(value);
-      await AsyncStorage.setItem('@fat_snf_ratio', value);
+      await persistDairySettings({ fat_snf_ratio: value }, { skipIfUnchanged: true });
     } catch (e) {
       // ignore persist errors silently
     }
@@ -2377,8 +2404,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 onPress={handleButtonPress(async () => {
                   try {
                     // Persist new threshold step rates
-                    await AsyncStorage.setItem('@fat_step_up_thresholds', JSON.stringify(tempFatStepUpThresholds || []));
-                    await AsyncStorage.setItem('@snf_step_down_thresholds', JSON.stringify(tempSnfStepDownThresholds || []));
+                    await persistDairySettings({ fat_step_up_thresholds: tempFatStepUpThresholds, snf_step_down_thresholds: tempSnfStepDownThresholds }, { skipIfUnchanged: true });
 
                     // Apply to live state
                     setFatStepUpThresholds(tempFatStepUpThresholds || []);
@@ -2696,11 +2722,11 @@ const ProRataCollectionScreen = ({ navigation }) => {
             {pendingRateType && (
               <>
                 <Text style={styles.baseSnfConfirmMessage}>
-                  {t('confirm rate type change', { value: pendingRateType === 'fat_snf' ? 'FAT + SNF' : 'FAT + CLR' })}
+                  {t('confirm rate type change', { value: RATE_TYPE_LABELS[pendingRateType] || pendingRateType })}
                 </Text>
                 <View style={styles.baseSnfValueChip}>
                   <Text style={styles.baseSnfValueChipText}>
-                    {pendingRateType === 'fat_snf' ? 'FAT + SNF' : 'FAT + CLR'}
+                    {RATE_TYPE_LABELS[pendingRateType] || pendingRateType}
                   </Text>
                 </View>
                 <Text style={styles.baseSnfConfirmSubtext}>
@@ -2712,6 +2738,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.baseSnfConfirmSecondaryButton}
                 onPress={handleButtonPress(() => {
+                  setRateTypePickerValue(tempRateType);
                   setShowRateTypeConfirm(false);
                   setPendingRateType(null);
                 })}
@@ -2723,35 +2750,10 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 onPress={handleButtonPress(async () => {
                   if (pendingRateType) {
                     setTempRateType(pendingRateType);
-                    
+                    setRateTypePickerValue(pendingRateType);
+
                     // Update radio buttons immediately for better UX
-                    if (pendingRateType === 'fat_snf') {
-                      setSelectedRadios({
-                        snf: true,
-                        clr: false
-                      });
-                    } else if (pendingRateType === 'fat_clr') {
-                      setSelectedRadios({
-                        snf: false,
-                        clr: true
-                      });
-                    }
-                    
-                    // Save to backend immediately
-                    try {
-                      // We need to get the dairy info first to get the ID and other required fields
-                      const dairyInfo = await getDairyInfo();
-                      if (dairyInfo) {
-                        // Update the dairy info with the new rate type
-                        await updateDairyInfo({
-                          ...dairyInfo,  // Include all existing dairy info
-                          rate_type: pendingRateType
-                        });
-                        console.log('Rate type saved to backend:', pendingRateType);
-                      }
-                    } catch (error) {
-                      console.error('Error saving rate type to backend:', error);
-                    }
+                    setSelectedRadios(getRadiosForRateType(pendingRateType));
                   }
                   setShowRateTypeConfirm(false);
                   setPendingRateType(null);
@@ -2818,34 +2820,23 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 {/* Rate Type Section */}
                 <View style={styles.changeRatesSection}>
                   <Text style={styles.changeRatesSectionTitle}>{t('rate type')}</Text>
-                  <View style={styles.changeRatesToggleContainer}>
-                    {[
-                      { label: 'FAT + SNF', value: 'fat_snf' },
-                      { label: 'FAT + CLR', value: 'fat_clr' }
-                    ].map((option) => (
-                      <TouchableOpacity
-                        key={option.value}
-                        style={[
-                          styles.changeRatesToggleOption,
-                          tempRateType === option.value && styles.changeRatesToggleOptionSelected
-                        ]}
-                        onPress={() => {
-                          if (tempRateType !== option.value) {
-                            setPendingRateType(option.value);
-                            setShowRateTypeConfirm(true);
-                          }
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.changeRatesToggleText,
-                            tempRateType === option.value && styles.changeRatesToggleTextSelected
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                  <View style={styles.rateTypePickerContainer}>
+                    <Picker
+                      selectedValue={rateTypePickerValue}
+                      onValueChange={(value) => {
+                        if (value !== tempRateType) {
+                          setPendingRateType(value);
+                          setRateTypePickerValue(value);
+                          setShowRateTypeConfirm(true);
+                        }
+                      }}
+                      style={styles.rateTypePicker}
+                      dropdownIconColor="#0D47A1"
+                    >
+                      {RATE_TYPES.map((option) => (
+                        <Picker.Item label={option.label} value={option.value} key={option.value} />
+                      ))}
+                    </Picker>
                   </View>
                 </View>
 
@@ -2961,57 +2952,15 @@ const ProRataCollectionScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.changeRatesSaveButton}
                 onPress={async () => {
-                  // Save base SNF
-                  await handleBaseSnfToggle(tempBaseSnf);
-                  
-                  // Save CLR conversion factor
-                  try {
-                    setClrConversionFactor(tempClrConversionFactor);
-                    await AsyncStorage.setItem('@clr_conversion_factor', tempClrConversionFactor);
-                  } catch (e) {
-                    console.error('Error saving CLR conversion factor:', e);
-                  }
-                  
-                  // Save Fat/SNF ratio
-                  try {
-                    setFatSnfRatio(tempFatSnfRatio);
-                    await AsyncStorage.setItem('@fat_snf_ratio', tempFatSnfRatio);
-                  } catch (e) {
-                    console.error('Error saving Fat/SNF ratio:', e);
-                  }
-                  
-                  // Save Rate Type and update radio buttons
-                  try {
-                    // Get current dairy info to check if rate type has changed
-                    const dairyInfo = await getDairyInfo();
-                    
-                    // Only update if the rate type has changed from what's in the backend
-                    if (dairyInfo && dairyInfo.rate_type !== tempRateType) {
-                      // Update the dairy info with the new rate type
-                      await updateDairyInfo({
-                        ...dairyInfo,
-                        rate_type: tempRateType
-                      });
-                      
-                      console.log('Rate type saved to backend from Save button:', tempRateType);
-                    }
-                    
-                    // Update the radio buttons based on the selected rate type
-                    if (tempRateType === 'fat_snf') {
-                      setSelectedRadios({
-                        snf: true,
-                        clr: false
-                      });
-                    } else if (tempRateType === 'fat_clr') {
-                      setSelectedRadios({
-                        snf: false,
-                        clr: true
-                      });
-                    }
-                  } catch (e) {
-                    console.error('Error saving rate type:', e);
-                  }
-                  
+                  const overrides = {
+                    base_snf: tempBaseSnf,
+                    clr_conversion_factor: tempClrConversionFactor,
+                    fat_snf_ratio: tempFatSnfRatio,
+                    rate_type: tempRateType
+                  };
+
+                  await persistDairySettings(overrides, { skipIfUnchanged: true });
+                  setSelectedRadios(getRadiosForRateType(tempRateType));
                   setShowChangeRatesModal(false);
                 }}
               >

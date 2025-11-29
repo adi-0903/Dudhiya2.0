@@ -7,14 +7,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Use your machine's IP address for both development and production on physical devices
 // Normal
-const BASE_URL = "http://dudhiya-backend-fik82q-a7eaae-31-97-60-222.traefik.me/api"; 
+//const BASE_URL = "http://dudhiya-backend-fik82q-a7eaae-31-97-60-222.traefik.me/api"; 
 
 // MOD
 //const BASE_URL = "http://dudhiya-backend-v104-mod-zpskdt-829829-31-97-60-222.traefik.me/api";
 
+// TEST
+const BASE_URL = "http://dudhiya-backend-yabopd-2b0695-31-97-60-222.traefik.me/api"; //"https://4d65d50ca56d.ngrok-free.app/api"; //"http://dudhiya-backend-yabopd-2b0695-31-97-60-222.traefik.me/api";
+
 // API Endpoints
 const ENDPOINTS = {
-  LOGIN: '/login/',  
+  LOGIN: '/login/',
   FORGOT_PASSWORD: '/forgot-password/',
   RESET_PASSWORD: '/reset-password/',
   USER_INFO: '/user-info/',
@@ -48,6 +51,8 @@ const ENDPOINTS = {
   // Misc endpoints
   YOUTUBE_LINK: '/collector/youtube-link/youtube-link/',
 };
+
+const ALLOWED_DAIRY_RATE_TYPES = ['fat_snf', 'fat_clr', 'kg_only', 'liters_only', 'fat_only'];
 
 // Fetch YouTube channel link from backend
 export const getYouTubeLink = async () => {
@@ -109,14 +114,14 @@ api.interceptors.response.use(
           error: 'Server error. Please try again later.'
         });
       default:
-        return Promise.reject(error.response?.data || { 
-          error: `Network error occurred (${error.response?.status || 'unknown'})` 
+        return Promise.reject(error.response?.data || {
+          error: `Network error occurred (${error.response?.status || 'unknown'})`
         });
     }
   }
 );
 
-export const DEV_MODE = false;
+export const DEV_MODE = true;
 
 export const loginUser = async (phoneNumber) => {
   if (DEV_MODE) {
@@ -130,13 +135,13 @@ export const loginUser = async (phoneNumber) => {
       const response = await api.post(ENDPOINTS.LOGIN, {
         phone_number: phoneNumber.replace('+91', '') // Remove +91 prefix as per docs
       });
-      
+
       console.log('Login API Response:', response.data);
-      
+
       if (!response.data.verificationId) {
         throw new Error('Verification ID not received from server');
       }
-      
+
       return {
         verificationId: response.data.verificationId,
         message: response.data.message
@@ -169,16 +174,16 @@ export const generateProRataCustomerBills = async (startDate, endDate) => {
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `PRO_RATA_FULL_CUSTOMER_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri;
-      
+
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -186,7 +191,7 @@ export const generateProRataCustomerBills = async (startDate, endDate) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -199,7 +204,7 @@ export const generateProRataCustomerBills = async (startDate, endDate) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: appFileUri
@@ -245,9 +250,13 @@ export const saveDairyInfo = async (dairyData) => {
     if (!dairyData.dairy_name) {
       throw { error: 'Dairy name is required' };
     }
-    
+
     if (!dairyData.dairy_address) {
       throw { error: 'Dairy address is required' };
+    }
+
+    if (dairyData.rate_type && !ALLOWED_DAIRY_RATE_TYPES.includes(dairyData.rate_type)) {
+      throw { error: `Invalid rate type. Must be one of: ${ALLOWED_DAIRY_RATE_TYPES.join(', ')}` };
     }
 
     const response = await api.post(ENDPOINTS.DAIRY_INFO, dairyData);
@@ -266,13 +275,13 @@ export const updateDairyInfo = async (dairyData) => {
     if (!dairyData.dairy_name) {
       throw { error: 'Dairy name is required' };
     }
-    
+
     if (!dairyData.dairy_address) {
       throw { error: 'Dairy address is required' };
     }
-    
-    if (!dairyData.rate_type || !['fat_snf', 'fat_clr'].includes(dairyData.rate_type)) {
-      throw { error: 'Invalid rate type. Must be one of: fat_snf, fat_clr' };
+
+    if (!dairyData.rate_type || !ALLOWED_DAIRY_RATE_TYPES.includes(dairyData.rate_type)) {
+      throw { error: `Invalid rate type. Must be one of: ${ALLOWED_DAIRY_RATE_TYPES.join(', ')}` };
     }
 
     const response = await api.put(`${ENDPOINTS.DAIRY_INFO}${dairyData.id}/`, dairyData);
@@ -322,8 +331,8 @@ export const updateRateChart = async (data) => {
     if (!data.currentRate || data.currentRate <= 0) {
       throw { error: 'Price must be greater than 0' };
     }
-    const response = await api.post(ENDPOINTS.MARKET_PRICES, { 
-      price: data.currentRate 
+    const response = await api.post(ENDPOINTS.MARKET_PRICES, {
+      price: data.currentRate
     });
     return response.data;
   } catch (error) {
@@ -370,7 +379,7 @@ export const createCustomer = async (customerData) => {
     if (customerData.phone && !/^\d{10}$/.test(customerData.phone)) {
       throw { error: 'Phone number must be exactly 10 digits' };
     }
-    
+
     const response = await api.post(ENDPOINTS.CUSTOMERS, customerData);
     return response.data;
   } catch (error) {
@@ -447,10 +456,10 @@ export const verifyPayment = async (paymentLinkId) => {
     const response = await api.post(`${ENDPOINTS.WALLET}verify_payment/`, {
       payment_link_id: paymentLinkId
     });
-    
+
     // Extract status and message from response
     const { status, message, amount } = response.data;
-    
+
     // If payment is already processed, consider it successful
     if (message?.includes('already processed')) {
       return {
@@ -458,7 +467,7 @@ export const verifyPayment = async (paymentLinkId) => {
         amount: amount || 0
       };
     }
-    
+
     return {
       status: status || 'PENDING',
       amount: amount ? parseFloat(amount) : 0
@@ -509,7 +518,7 @@ export const deleteCollection = async (collectionId) => {
 // Add collection report endpoints
 export const getCollections = async (params = {}) => {
   try {
-    const response = await api.get(ENDPOINTS.COLLECTIONS, { 
+    const response = await api.get(ENDPOINTS.COLLECTIONS, {
       params: {
         page: params.page || 1,
         page_size: params.page_size || 50,
@@ -525,7 +534,7 @@ export const getCollections = async (params = {}) => {
 // Purchase report collections
 export const getPurchaseReportCollections = async (params = {}) => {
   try {
-    const response = await api.get(`${ENDPOINTS.PURCHASES_REPORT_COLLECTIONS}`, { 
+    const response = await api.get(`${ENDPOINTS.PURCHASES_REPORT_COLLECTIONS}`, {
       params: {
         page: params.page || 1,
         page_size: params.page_size || 50,
@@ -558,7 +567,7 @@ export const getPurchaseSummaryReportCollections = async (params) => {
 // Pro rata purchase report collections
 export const getProRataPurchaseReportCollections = async (params = {}) => {
   try {
-    const response = await api.get(`${ENDPOINTS.PRO_RATA_PURCHASE_REPORT_COLLECTIONS}`, { 
+    const response = await api.get(`${ENDPOINTS.PRO_RATA_PURCHASE_REPORT_COLLECTIONS}`, {
       params: {
         page: params.page || 1,
         page_size: params.page_size || 50,
@@ -595,7 +604,7 @@ const formatDateForReportName = (dateString) => {
   // Parse date (handling different input formats)
   const dateParts = dateString.split(/[-/]/);
   let day, month, year;
-  
+
   // Handle common formats (YYYY-MM-DD, MM-DD-YYYY, or DD-MM-YYYY)
   if (dateParts.length === 3) {
     // Assume format is YYYY-MM-DD or DD-MM-YYYY based on first part
@@ -614,7 +623,7 @@ const formatDateForReportName = (dateString) => {
     // Fall back to original string if unexpected format
     return dateString;
   }
-  
+
   // Add ordinal suffix to day
   const getOrdinalSuffix = (day) => {
     if (day > 3 && day < 21) return `${day}th`;
@@ -625,15 +634,15 @@ const formatDateForReportName = (dateString) => {
       default: return `${day}th`;
     }
   };
-  
+
   // Get month name
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  
+
   // Return formatted date: "1st March 25"
-  return `${getOrdinalSuffix(day)}_${months[month-1]}_${year.slice(-2)}`;
+  return `${getOrdinalSuffix(day)}_${months[month - 1]}_${year.slice(-2)}`;
 };
 
 // Add report generation endpoint
@@ -648,30 +657,30 @@ export const generateFullReport = async (startDate, endDate) => {
       },
       timeout: 60000, // Increase timeout to 60 seconds for report generation
     });
-    
+
     // Apply the same authorization header
     const token = await getToken();
     if (token) {
       reportApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const response = await reportApi.get(`${ENDPOINTS.GENERATE_FULL_REPORT}?start_date=${startDate}&end_date=${endDate}`, { responseType: 'arraybuffer' });
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `FULL_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       // Save PDF to app directory (fallback)
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri; // Default fallback
-      
+
       // Try to copy to Downloads folder for Android using cached permissions
       if (Platform.OS === 'android') {
         try {
           // Check if we have cached directory URI
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             // Request permission first time only
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
@@ -681,7 +690,7 @@ export const generateFullReport = async (startDate, endDate) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -696,7 +705,7 @@ export const generateFullReport = async (startDate, endDate) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       // Return both URIs - public for viewing, app for sharing
       return {
         viewUri: publicFileUri,
@@ -736,19 +745,19 @@ export const generateProRataFullReport = async (startDate, endDate) => {
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `PRO_RATA_FULL_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       // Save PDF to app directory (fallback)
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri; // Default fallback
-      
+
       // Try to copy to Downloads folder for Android using cached permissions
       if (Platform.OS === 'android') {
         try {
           // Check if we have cached directory URI
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             // Request permission first time only
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
@@ -758,7 +767,7 @@ export const generateProRataFullReport = async (startDate, endDate) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -773,7 +782,7 @@ export const generateProRataFullReport = async (startDate, endDate) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       // Return both URIs - public for viewing, app for sharing
       return {
         viewUri: publicFileUri,
@@ -809,33 +818,33 @@ export const generateProRataPurchaseReport = async (startDate, endDate) => {
     }
 
     const response = await reportApi.get(`${ENDPOINTS.PRO_RATA_GENERATE_PURCHASE_REPORT}?start_date=${startDate}&end_date=${endDate}`, { responseType: 'arraybuffer' });
-    
+
     if (response.status === 200) {
       const pdfData = response.data;
-      
+
       // Check if we actually received PDF data by looking at the magic bytes
       const pdfHeader = new Uint8Array(pdfData.slice(0, 4));
       const pdfMagic = String.fromCharCode(...pdfHeader);
       console.log('PDF Magic bytes:', pdfMagic, 'Should be: %PDF');
-      
+
       if (!pdfMagic.startsWith('%PDF')) {
         console.error('Response is not a valid PDF file. First 100 bytes:', new Uint8Array(pdfData.slice(0, 100)));
         throw new Error('Server returned invalid PDF data. Please check the server response.');
       }
-      
+
       const fileName = `PRO_RATA_PURCHASE_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       // Save PDF to app directory (fallback)
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri; // Default fallback
-      
+
       // Try to copy to Downloads folder for Android using cached permissions
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -843,7 +852,7 @@ export const generateProRataPurchaseReport = async (startDate, endDate) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -856,7 +865,7 @@ export const generateProRataPurchaseReport = async (startDate, endDate) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: appFileUri
@@ -894,16 +903,16 @@ export const generateProRataPurchaseSummaryReport = async (startDate, endDate) =
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `PRO_RATA_PURCHASE_SUMMARY_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri;
-      
+
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -911,7 +920,7 @@ export const generateProRataPurchaseSummaryReport = async (startDate, endDate) =
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -924,7 +933,7 @@ export const generateProRataPurchaseSummaryReport = async (startDate, endDate) =
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: appFileUri
@@ -962,16 +971,16 @@ export const generateProRataCustomerReport = async (customerId, startDate, endDa
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `PRO_RATA_CUSTOMER_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri;
-      
+
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -979,7 +988,7 @@ export const generateProRataCustomerReport = async (customerId, startDate, endDa
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -992,7 +1001,7 @@ export const generateProRataCustomerReport = async (customerId, startDate, endDa
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: appFileUri
@@ -1021,27 +1030,27 @@ export const generateFullCustomerReport = async (startDate, endDate) => {
       },
       timeout: 60000, // Increase timeout to 60 seconds for report generation
     });
-    
+
     // Apply the same authorization header
     const token = await getToken();
     if (token) {
       reportApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const response = await reportApi.get(`${ENDPOINTS.GENERATE_FULL_CUSTOMER_REPORT}?start_date=${startDate}&end_date=${endDate}`, { responseType: 'arraybuffer' });
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `FULL_CUSTOMER_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri;
-      
+
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -1049,7 +1058,7 @@ export const generateFullCustomerReport = async (startDate, endDate) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -1062,7 +1071,7 @@ export const generateFullCustomerReport = async (startDate, endDate) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: appFileUri
@@ -1100,13 +1109,13 @@ export const generateCustomerReport = async (customerId, dateFrom, dateTo) => {
       },
       timeout: 60000, // Increase timeout to 60 seconds for report generation
     });
-    
+
     // Apply the same authorization header
     const token = await getToken();
     if (token) {
       reportApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const response = await reportApi.get(`${ENDPOINTS.COLLECTIONS}generate_customer_report/`, {
       params: {
         start_date: dateFrom,
@@ -1120,16 +1129,16 @@ export const generateCustomerReport = async (customerId, dateFrom, dateTo) => {
       const pdfData = response.data;
       const fileName = `CUSTOMER_REPORT_${formatDateForReportName(dateFrom)}_to_${formatDateForReportName(dateTo)}.pdf`;
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-      
+
       // Write the binary data using the efficient chunked approach
       await FileSystem.writeAsStringAsync(fileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = fileUri;
-      
+
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -1137,7 +1146,7 @@ export const generateCustomerReport = async (customerId, dateFrom, dateTo) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' });
@@ -1150,7 +1159,7 @@ export const generateCustomerReport = async (customerId, dateFrom, dateTo) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: fileUri
@@ -1195,27 +1204,27 @@ export const generatePurchaseReport = async (startDate, endDate) => {
       },
       timeout: 60000, // Increase timeout to 60 seconds for report generation
     });
-    
+
     // Apply the same authorization header
     const token = await getToken();
     if (token) {
       reportApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const response = await reportApi.get(`${ENDPOINTS.GENERATE_PURCHASE_REPORT}?start_date=${startDate}&end_date=${endDate}`, { responseType: 'arraybuffer' });
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `PURCHASE_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri;
-      
+
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -1223,7 +1232,7 @@ export const generatePurchaseReport = async (startDate, endDate) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -1236,7 +1245,7 @@ export const generatePurchaseReport = async (startDate, endDate) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: appFileUri
@@ -1266,27 +1275,27 @@ export const generatePurchaseSummaryReport = async (startDate, endDate) => {
       },
       timeout: 60000, // Increase timeout to 60 seconds for report generation
     });
-    
+
     // Apply the same authorization header
     const token = await getToken();
     if (token) {
       reportApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const response = await reportApi.get(`${ENDPOINTS.GENERATE_PURCHASE_SUMMARY_REPORT}?start_date=${startDate}&end_date=${endDate}`, { responseType: 'arraybuffer' });
     if (response.status === 200) {
       const pdfData = response.data;
       const fileName = `PURCHASE_SUMMARY_REPORT_${formatDateForReportName(startDate)}_to_${formatDateForReportName(endDate)}.pdf`;
-      
+
       const appFileUri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(appFileUri, arrayBufferToBase64(pdfData), { encoding: 'base64' });
-      
+
       let publicFileUri = appFileUri;
-      
+
       if (Platform.OS === 'android') {
         try {
           let directoryUri = await AsyncStorage.getItem('downloads_directory_uri');
-          
+
           if (!directoryUri) {
             const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
             if (permissions.granted && permissions.directoryUri) {
@@ -1294,7 +1303,7 @@ export const generatePurchaseSummaryReport = async (startDate, endDate) => {
               await AsyncStorage.setItem('downloads_directory_uri', directoryUri);
             }
           }
-          
+
           if (directoryUri) {
             const publicFile = await FileSystem.StorageAccessFramework.createFileAsync(directoryUri, fileName, 'application/pdf');
             const fileContent = await FileSystem.readAsStringAsync(appFileUri, { encoding: 'base64' });
@@ -1307,7 +1316,7 @@ export const generatePurchaseSummaryReport = async (startDate, endDate) => {
           await AsyncStorage.removeItem('downloads_directory_uri');
         }
       }
-      
+
       return {
         viewUri: publicFileUri,
         shareUri: appFileUri

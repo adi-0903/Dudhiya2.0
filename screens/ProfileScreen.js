@@ -23,7 +23,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const RATE_TYPES = [
   { label: 'FAT + SNF', value: 'fat_snf' },
   { label: 'FAT + CLR', value: 'fat_clr' },
+  { label: 'KG', value: 'kg_only' },
+  { label: 'Liters', value: 'liters_only' },
 ];
+
+const RATE_TYPE_LABELS = RATE_TYPES.reduce((acc, type) => {
+  acc[type.value] = type.label;
+  return acc;
+}, {});
 
 const ProfileScreen = ({ navigation }) => {
   const [userInfo, setUserInfo] = useState(null);
@@ -464,7 +471,7 @@ const ProfileScreen = ({ navigation }) => {
             <View style={styles.infoRow}>
               <Text style={styles.label}>{t('rate type')}:</Text>
               <Text style={styles.value}>
-                {dairyInfo?.rate_type === 'fat_snf' ? 'FAT + SNF' : 'FAT + CLR'}
+                {RATE_TYPE_LABELS[dairyInfo?.rate_type] || 'N/A'}
               </Text>
             </View>
           </View>

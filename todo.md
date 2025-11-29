@@ -77,3 +77,8 @@ Other input field place holders as 0.00
 - Webapp to ahev redirection to main netpy website also
 
 - Recharge option as one recharge 999 unlimited for a month or 2.
+
+
+# Web APP 
+
+- Rate type changing functionalty fix, (current: deletes the existing info data while chnaing rae type)

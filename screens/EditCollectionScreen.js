@@ -16,12 +16,14 @@ import {
 import { TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { getCollection, getAllCustomers, getCustomers, updateCollection, deleteCollection, generateCustomerReport, getDairyInfo } from '../services/api';
+import { getCollection, getAllCustomers, getCustomers, updateCollection, deleteCollection, generateCustomerReport, getDairyInfo, updateDairyInfo } from '../services/api';
 import { useTranslation } from 'react-i18next';
 import * as FileSystem from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker';
+import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS } from '../utils/dairySettings';
 
 // TimeModal component with improved UI
 const TimeModal = ({ visible, onClose, selectedTime, onSelectTime }) => {
@@ -161,15 +163,15 @@ const EditCollectionScreen = ({ route, navigation }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // CLR to SNF conversion factor state (0.14 or 0.50)
-  const [clrConversionFactor, setClrConversionFactor] = useState('0.14');
-  
+  const [clrConversionFactor, setClrConversionFactor] = useState(DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
+
   // Fat/SNF ratio state (60/40 or 52/48)
-  const [fatSnfRatio, setFatSnfRatio] = useState('60_40');
-  
+  const [fatSnfRatio, setFatSnfRatio] = useState(DEFAULT_DAIRY_SETTINGS.fatSnfRatio);
+
   // Rate Settings modal state
   const [showChangeRatesModal, setShowChangeRatesModal] = useState(false);
-  const [tempClrConversionFactor, setTempClrConversionFactor] = useState('0.14');
-  const [tempFatSnfRatio, setTempFatSnfRatio] = useState('60_40');
+  const [tempClrConversionFactor, setTempClrConversionFactor] = useState(DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
+  const [tempFatSnfRatio, setTempFatSnfRatio] = useState(DEFAULT_DAIRY_SETTINGS.fatSnfRatio);
 
   // Confirmation modal state for Fat/SNF Ratio change
   const [showFatSnfRatioConfirm, setShowFatSnfRatioConfirm] = useState(false);
@@ -178,6 +180,9 @@ const EditCollectionScreen = ({ route, navigation }) => {
   // Confirmation modal state for CLR Conversion Factor change
   const [showClrConversionConfirm, setShowClrConversionConfirm] = useState(false);
   const [pendingClrConversion, setPendingClrConversion] = useState(null);
+
+  const [dairyDetails, setDairyDetails] = useState(null);
+  const [rateTypePickerValue, setRateTypePickerValue] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
 
   // Constants
   const timeOptions = ['Morning', 'Evening'];
@@ -200,41 +205,28 @@ const EditCollectionScreen = ({ route, navigation }) => {
     loadSavedLanguage();
   }, [i18n]);
 
-  // Persist and load CLR conversion factor (0.14 or 0.50)
-  useEffect(() => {
-    const loadClrConversionFactor = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@clr_conversion_factor');
-        if (saved === '0.14' || saved === '0.50') {
-          setClrConversionFactor(saved);
-        } else {
-          await AsyncStorage.setItem('@clr_conversion_factor', '0.14');
-          setClrConversionFactor('0.14');
-        }
-      } catch (e) {
-        setClrConversionFactor('0.14');
-      }
-    };
-    loadClrConversionFactor();
-  }, []);
+  // Rate-type radiobutton helper
+  const getRadiosForRateType = (rateType) => {
+    if (rateType === 'fat_snf') {
+      return { snf: true, clr: false };
+    }
+    if (rateType === 'fat_clr') {
+      return { snf: false, clr: true };
+    }
+    return { snf: false, clr: false };
+  };
 
-  // Persist and load Fat/SNF ratio (60/40 or 52/48)
-  useEffect(() => {
-    const loadFatSnfRatio = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@fat_snf_ratio');
-        if (saved === '60_40' || saved === '52_48') {
-          setFatSnfRatio(saved);
-        } else {
-          await AsyncStorage.setItem('@fat_snf_ratio', '60_40');
-          setFatSnfRatio('60_40');
-        }
-      } catch (e) {
-        setFatSnfRatio('60_40');
-      }
-    };
-    loadFatSnfRatio();
-  }, []);
+  const RATE_TYPES = [
+    { label: 'FAT + SNF', value: 'fat_snf' },
+    { label: 'FAT + CLR', value: 'fat_clr' },
+    { label: 'KG', value: 'kg_only' },
+    { label: 'Liters', value: 'liters_only' }
+  ];
+
+  const RATE_TYPE_LABELS = RATE_TYPES.reduce((acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+  }, {});
 
   // Fetch collection details on mount
   useEffect(() => {
@@ -252,22 +244,71 @@ const EditCollectionScreen = ({ route, navigation }) => {
   const fetchDairyInfo = async () => {
     try {
       const dairyInfo = await getDairyInfo();
-      if (dairyInfo && dairyInfo.rate_type) {
-        // Set radio buttons based on rate_type
-        if (dairyInfo.rate_type === 'fat_snf') {
-          setSelectedRadios({
-            snf: true,
-            clr: false
-          });
-        } else if (dairyInfo.rate_type === 'fat_clr') {
-          setSelectedRadios({
-            snf: false,
-            clr: true
-          });
-        }
+      if (dairyInfo) {
+        const sanitized = normalizeDairyInfo(dairyInfo);
+        setDairyDetails(sanitized);
+
+        const baseSnfValue = sanitized.base_snf || DEFAULT_DAIRY_SETTINGS.baseSnf;
+        setFormData((prev) => ({ ...prev, base_snf_percentage: baseSnfValue }));
+
+        const ratioValue = sanitized.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
+        setFatSnfRatio(ratioValue);
+        setTempFatSnfRatio(ratioValue);
+
+        const clrValue = sanitized.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
+        setClrConversionFactor(clrValue);
+        setTempClrConversionFactor(clrValue);
+
+        const resolvedRateType = sanitized.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
+        setRateTypePickerValue(resolvedRateType);
+        setSelectedRadios(getRadiosForRateType(resolvedRateType));
       }
     } catch (error) {
       console.error('Error fetching dairy info:', error);
+    }
+  };
+
+  const ensureDairyDetailsForUpdate = async () => {
+    if (dairyDetails?.id) {
+      return dairyDetails;
+    }
+    const fetched = await getDairyInfo();
+    if (fetched) {
+      const sanitized = normalizeDairyInfo(fetched);
+      setDairyDetails(sanitized);
+      return sanitized;
+    }
+    return null;
+  };
+
+  const persistDairySettings = async (overrides = {}, options = {}) => {
+    const { skipIfUnchanged = false } = options;
+    try {
+      const current = await ensureDairyDetailsForUpdate();
+      if (!current?.id) {
+        return null;
+      }
+
+      const merged = { ...current, ...overrides };
+      if (
+        skipIfUnchanged &&
+        Object.keys(overrides).every((key) => String(current[key]) === String(merged[key]))
+      ) {
+        return current;
+      }
+
+      const payload = buildDairyUpdatePayload(current, overrides);
+      if (!payload) {
+        return current;
+      }
+
+      const updated = await updateDairyInfo(payload);
+      const sanitized = normalizeDairyInfo(updated);
+      setDairyDetails(sanitized);
+      return sanitized;
+    } catch (error) {
+      console.error('Error saving dairy settings:', error);
+      return null;
     }
   };
 
@@ -1807,22 +1848,14 @@ const EditCollectionScreen = ({ route, navigation }) => {
                 <TouchableOpacity
                   style={styles.changeRatesSaveButton}
                   onPress={async () => {
-                    // Save CLR conversion factor
-                    try {
-                      setClrConversionFactor(tempClrConversionFactor);
-                      await AsyncStorage.setItem('@clr_conversion_factor', tempClrConversionFactor);
-                    } catch (e) {
-                      console.error('Error saving CLR conversion factor:', e);
-                    }
-                    
-                    // Save Fat/SNF ratio
-                    try {
-                      setFatSnfRatio(tempFatSnfRatio);
-                      await AsyncStorage.setItem('@fat_snf_ratio', tempFatSnfRatio);
-                    } catch (e) {
-                      console.error('Error saving Fat/SNF ratio:', e);
-                    }
-                    
+                    const overrides = {
+                      clr_conversion_factor: tempClrConversionFactor,
+                      fat_snf_ratio: tempFatSnfRatio
+                    };
+
+                    await persistDairySettings(overrides, { skipIfUnchanged: true });
+                    setClrConversionFactor(tempClrConversionFactor);
+                    setFatSnfRatio(tempFatSnfRatio);
                     setShowChangeRatesModal(false);
                   }}
                 >
