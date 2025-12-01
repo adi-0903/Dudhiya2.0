@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  StyleSheet, 
-  TextInput, 
-  Alert, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  Alert,
   Modal,
   ActivityIndicator,
   TouchableWithoutFeedback,
@@ -18,15 +18,17 @@ import {
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getCurrentMarketPrice, getAllCustomers, getCustomers, createCollection, getCollections, getDairyInfo, updateDairyInfo } from '../services/api';
+import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS } from '../utils/dairySettings';
 import BottomNav from '../components/BottomNav';
 import { useTranslation } from 'react-i18next';
 import useKeyboardDismiss from '../hooks/useKeyboardDismiss';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker';
 
 const CollectionScreen = ({ navigation }) => {
   const [walletBalance, setWalletBalance] = useState("₹8"); // Replace with actual wallet balance
   const [fat, setFat] = useState('6.5');
-  const [snf, setSnf] = useState('9.0');
+  const [snf, setSnf] = useState(DEFAULT_DAIRY_SETTINGS.baseSnf);
   const [currentRate, setCurrentRate] = useState(null);
   const [isLoadingRate, setIsLoadingRate] = useState(true);
   const [showSnfModal, setShowSnfModal] = useState(false);
@@ -45,6 +47,7 @@ const CollectionScreen = ({ navigation }) => {
     snf: true,  // SNF selected by default
     clr: false
   });
+  const [dairyDetails, setDairyDetails] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
@@ -61,7 +64,7 @@ const CollectionScreen = ({ navigation }) => {
   const allowedSnfValues = ['9.0', '9.1', '9.2', '9.3', '9.5'];
   const animalOptions = ['Cow', 'Buffalo', 'Cow + Buffalo'];
   const timeOptions = ['Morning', 'Evening'];
-  const [showBaseSnfModal, setShowBaseSnfModal] = useState(false); 
+  const [showBaseSnfModal, setShowBaseSnfModal] = useState(false);
   const { t, i18n } = useTranslation();
   const [showLowWalletPopup, setShowLowWalletPopup] = useState(false);
   const [showDuplicateCollectionPopup, setShowDuplicateCollectionPopup] = useState(false);
@@ -95,16 +98,16 @@ const CollectionScreen = ({ navigation }) => {
   const [isClrFocused, setIsClrFocused] = useState(false);
 
   // CLR to SNF conversion factor state (0.14 or 0.50)
-  const [clrConversionFactor, setClrConversionFactor] = useState('0.14');
-  
+  const [clrConversionFactor, setClrConversionFactor] = useState(DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
+
   // Fat/SNF ratio state (60/40 or 52/48)
-  const [fatSnfRatio, setFatSnfRatio] = useState('60_40');
-  
+  const [fatSnfRatio, setFatSnfRatio] = useState(DEFAULT_DAIRY_SETTINGS.fatSnfRatio);
+
   // Change Rates modal state
   const [showChangeRatesModal, setShowChangeRatesModal] = useState(false);
-  const [tempBaseSnf, setTempBaseSnf] = useState('9.0');
-  const [tempClrConversionFactor, setTempClrConversionFactor] = useState('0.14');
-  const [tempFatSnfRatio, setTempFatSnfRatio] = useState('60_40');
+  const [tempBaseSnf, setTempBaseSnf] = useState(DEFAULT_DAIRY_SETTINGS.baseSnf);
+  const [tempClrConversionFactor, setTempClrConversionFactor] = useState(DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
+  const [tempFatSnfRatio, setTempFatSnfRatio] = useState(DEFAULT_DAIRY_SETTINGS.fatSnfRatio);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -121,62 +124,6 @@ const CollectionScreen = ({ navigation }) => {
     loadSavedLanguage();
   }, [i18n]);
 
-  // Persist and load Base SNF (9.0 / 8.5) selection
-  useEffect(() => {
-    const loadBaseSnf = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@base_snf');
-        if (saved === '9.0' || saved === '8.5') {
-          setSnf(saved);
-        } else {
-          // default to 9.0 and persist
-          await AsyncStorage.setItem('@base_snf', '9.0');
-          setSnf('9.0');
-        }
-      } catch (e) {
-        // In case of any error, keep default 9.0
-        setSnf('9.0');
-      }
-    };
-    loadBaseSnf();
-  }, []);
-
-  // Persist and load CLR conversion factor (0.14 or 0.50)
-  useEffect(() => {
-    const loadClrConversionFactor = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@clr_conversion_factor');
-        if (saved === '0.14' || saved === '0.50') {
-          setClrConversionFactor(saved);
-        } else {
-          await AsyncStorage.setItem('@clr_conversion_factor', '0.14');
-          setClrConversionFactor('0.14');
-        }
-      } catch (e) {
-        setClrConversionFactor('0.14');
-      }
-    };
-    loadClrConversionFactor();
-  }, []);
-
-  // Persist and load Fat/SNF ratio (60/40 or 52/48)
-  useEffect(() => {
-    const loadFatSnfRatio = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('@fat_snf_ratio');
-        if (saved === '60_40' || saved === '52_48') {
-          setFatSnfRatio(saved);
-        } else {
-          await AsyncStorage.setItem('@fat_snf_ratio', '60_40');
-          setFatSnfRatio('60_40');
-        }
-      } catch (e) {
-        setFatSnfRatio('60_40');
-      }
-    };
-    loadFatSnfRatio();
-  }, []);
-
   // Add useFocusEffect to fetch rate when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
@@ -191,33 +138,103 @@ const CollectionScreen = ({ navigation }) => {
   const RATE_TYPES = [
     { label: 'FAT + SNF', value: 'fat_snf' },
     { label: 'FAT + CLR', value: 'fat_clr' },
+    { label: 'KG', value: 'kg_only' },
+    { label: 'Liters', value: 'liters_only' }
   ];
-  
+  const RATE_TYPE_LABELS = RATE_TYPES.reduce((acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+  }, {});
+
+  const getRadiosForRateType = (rateType) => {
+    if (rateType === 'fat_snf') {
+      return { snf: true, clr: false };
+    }
+    if (rateType === 'fat_clr') {
+      return { snf: false, clr: true };
+    }
+    return { snf: false, clr: false };
+  };
+
   // State for rate type in the rate settings modal
-  const [tempRateType, setTempRateType] = useState('fat_snf');
+  const [tempRateType, setTempRateType] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
+  const [rateTypePickerValue, setRateTypePickerValue] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
+
+  const applyDairySettings = (settings) => {
+    if (!settings) return;
+
+    setDairyDetails(settings);
+
+    const baseSnfValue = settings.base_snf || DEFAULT_DAIRY_SETTINGS.baseSnf;
+    setSnf(baseSnfValue);
+    setTempBaseSnf(baseSnfValue);
+
+    const ratioValue = settings.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
+    setFatSnfRatio(ratioValue);
+    setTempFatSnfRatio(ratioValue);
+
+    const clrValue = settings.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
+    setClrConversionFactor(clrValue);
+    setTempClrConversionFactor(clrValue);
+
+    const resolvedRateType = settings.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
+    setTempRateType(resolvedRateType);
+    setRateTypePickerValue(resolvedRateType);
+
+    setSelectedRadios(getRadiosForRateType(resolvedRateType));
+  };
 
   // Add function to fetch dairy info and set radio buttons
   const fetchDairyInfo = async () => {
     try {
       const dairyInfo = await getDairyInfo();
-      if (dairyInfo && dairyInfo.rate_type) {
-        // Set radio buttons based on rate_type
-        if (dairyInfo.rate_type === 'fat_snf') {
-          setSelectedRadios({
-            snf: true,
-            clr: false
-          });
-          setTempRateType('fat_snf');
-        } else if (dairyInfo.rate_type === 'fat_clr') {
-          setSelectedRadios({
-            snf: false,
-            clr: true
-          });
-          setTempRateType('fat_clr');
-        }
+      if (dairyInfo) {
+        const sanitizedInfo = normalizeDairyInfo(dairyInfo);
+        applyDairySettings(sanitizedInfo);
+        return sanitizedInfo;
       }
     } catch (error) {
       console.error('Error fetching dairy info:', error);
+    }
+    return null;
+  };
+
+  const ensureDairyDetailsForUpdate = async () => {
+    if (dairyDetails?.id) {
+      return dairyDetails;
+    }
+    return await fetchDairyInfo();
+  };
+
+  const persistDairySettings = async (overrides = {}, options = {}) => {
+    const { skipIfUnchanged = false } = options;
+    try {
+      const current = await ensureDairyDetailsForUpdate();
+      if (!current?.id) {
+        return null;
+      }
+
+      const merged = { ...current, ...overrides };
+      if (
+        skipIfUnchanged &&
+        Object.keys(overrides).every((key) => String(current[key]) === String(merged[key]))
+      ) {
+        return current;
+      }
+
+      const payload = buildDairyUpdatePayload(current, overrides);
+      if (!payload) {
+        return current;
+      }
+
+      console.log('Persisting dairy settings payload:', payload);
+      const updated = await updateDairyInfo(payload);
+      const sanitized = normalizeDairyInfo(updated);
+      applyDairySettings(sanitized);
+      return sanitized;
+    } catch (error) {
+      console.error('Error saving dairy settings:', error);
+      return null;
     }
   };
 
@@ -386,16 +403,17 @@ const CollectionScreen = ({ navigation }) => {
   const handleBaseSnfToggle = async (value) => {
     try {
       setSnf(value);
-      await AsyncStorage.setItem('@base_snf', value);
-    } catch (e) {
-      // ignore persist errors silently
+      setTempBaseSnf(value);
+      await persistDairySettings({ base_snf: value }, { skipIfUnchanged: true });
+    } catch (error) {
+      console.error('Error updating base SNF:', error);
     }
   };
 
   const handleSearch = (text) => {
     setSearchQuery(text);
     setShowCustomersList(text.length > 0);
-    
+
     if (text.length > 0) {
       const filtered = customers.filter(customer => {
         const searchLower = text.toLowerCase();
@@ -434,7 +452,7 @@ const CollectionScreen = ({ navigation }) => {
       Alert.alert(
         t('customer required'),
         t('please select a customer before proceeding.'),
-        [{ text: t('ok'), onPress: () => {} }]
+        [{ text: t('ok'), onPress: () => { } }]
       );
       return;
     }
@@ -443,7 +461,7 @@ const CollectionScreen = ({ navigation }) => {
       setErrors({ ...errors, radio: 'Please select SNF% or CLR' });
       return;
     }
-    
+
     if (validateInputs()) {
       try {
         // Convert all numeric inputs to floats
@@ -474,13 +492,13 @@ const CollectionScreen = ({ navigation }) => {
         // Calculate rates based on selected Fat/SNF ratio
         const fatRatioPercent = fatSnfRatio === '60_40' ? 60 : 52;
         const snfRatioPercent = fatSnfRatio === '60_40' ? 40 : 48;
-        
+
         const fatRate = Math.floor((milkRate * fatRatioPercent / 6.5) * 100) / 100;
         const snfRate = Math.floor((milkRate * snfRatioPercent / baseSnfPercentage) * 100) / 100;
 
         // Calculate final amount - No limitation
-        const amt = Math.floor(parseFloat(fatKg) * parseFloat(fatRate) * 100) / 100 + 
-                  Math.floor(parseFloat(snfKg) * parseFloat(snfRate) * 100) / 100;
+        const amt = Math.floor(parseFloat(fatKg) * parseFloat(fatRate) * 100) / 100 +
+          Math.floor(parseFloat(snfKg) * parseFloat(snfRate) * 100) / 100;
         const amount = amt.toFixed(3);
 
         // Calculate solid weight - No limitation
@@ -541,22 +559,22 @@ const CollectionScreen = ({ navigation }) => {
       }, 2000);
     } catch (error) {
       setShowPreviewModal(false);
-      
+
       // Check if the error is about insufficient wallet balance
       if (error.error && (
-        error.error.includes('insufficient wallet balance') || 
-        error.error.includes('Insufficient') || 
+        error.error.includes('insufficient wallet balance') ||
+        error.error.includes('Insufficient') ||
         error.error.includes('wallet balance')
       )) {
         setShowLowWalletPopup(true);
-      } 
+      }
       // Check for duplicate collection error
       else if (error.error && error.error.includes('Duplicate collection found')) {
         // Extract date and time from error message if possible
         try {
           const dateMatch = error.error.match(/on\s+(\d{4}-\d{2}-\d{2})/);
           const timeMatch = error.error.match(/\(([^)]+)\)/);
-          
+
           if (dateMatch && timeMatch) {
             setDuplicateCollectionInfo({
               date: dateMatch[1],
@@ -566,7 +584,7 @@ const CollectionScreen = ({ navigation }) => {
         } catch (parseError) {
           console.log('Error parsing duplicate collection message:', parseError);
         }
-        
+
         setShowDuplicateCollectionPopup(true);
       }
       else {
@@ -630,7 +648,7 @@ const CollectionScreen = ({ navigation }) => {
     // based on the dairy rate type
     setErrors({});
     // Do not reset Base SNF here; keep user's selection persistent
-    
+
     // Add these lines to reset customer selection
     setSearchQuery('');
     setSelectedCustomer(null);
@@ -683,7 +701,7 @@ const CollectionScreen = ({ navigation }) => {
       month: 'short',
       year: 'numeric'
     });
-    
+
     const timeDisplay = latestCollection.collection_time === 'morning' ? 'Morning' : 'Evening';
 
     return (
@@ -694,8 +712,8 @@ const CollectionScreen = ({ navigation }) => {
             <View style={[styles.cell, styles.headerCell, { flex: 1.5 }]}>
               <Text style={styles.headerText}>Date & Time</Text>
             </View>
-            <View style={[styles.cell, styles.headerCell, { flex: 2 }]}> 
-              <Text style={styles.headerText}>Name</Text> 
+            <View style={[styles.cell, styles.headerCell, { flex: 2 }]}>
+              <Text style={styles.headerText}>Name</Text>
             </View>
             <View style={[styles.cell, styles.headerCell, { flex: 0.8 }]}>
               <Text style={styles.headerText}>KG</Text>
@@ -715,9 +733,9 @@ const CollectionScreen = ({ navigation }) => {
           </View>
 
           {/* Data Row */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.tableRow}
-            onPress={() => navigation.navigate('EditCollection', { 
+            onPress={() => navigation.navigate('EditCollection', {
               collectionId: latestCollection.id,
               collection: latestCollection
             })}
@@ -750,8 +768,8 @@ const CollectionScreen = ({ navigation }) => {
             </View>
           </TouchableOpacity>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.showCollectionsButton}
           onPress={() => navigation.navigate('GenerateFullReport')}
         >
@@ -769,17 +787,17 @@ const CollectionScreen = ({ navigation }) => {
     const fatKg = previewData.fat_kg;
     const snfKg = previewData.snf_kg;
     const milkRate = parseFloat(currentRate);
-    
+
     // Calculate new rates with new base SNF using selected Fat/SNF ratio
     const fatRatioPercent = fatSnfRatio === '60_40' ? 60 : 52;
     const snfRatioPercent = fatSnfRatio === '60_40' ? 40 : 48;
-    
+
     const fatRate = (milkRate * fatRatioPercent / 6.5).toFixed(3);
     const snfRate = (milkRate * snfRatioPercent / parseFloat(newBaseSnf)).toFixed(3);
 
     // Calculate new amount
     const newAmount = (
-      parseFloat(fatKg) * parseFloat(fatRate) + 
+      parseFloat(fatKg) * parseFloat(fatRate) +
       parseFloat(snfKg) * parseFloat(snfRate)
     ).toFixed(2);
 
@@ -828,59 +846,59 @@ const CollectionScreen = ({ navigation }) => {
                   </View>
 
                   <View style={styles.baseSnfOptionsContainer}>
-            {/* Special highlighted 8.5 option */}
-            <TouchableOpacity
-              key={'8.5'}
-              style={[
-                styles.baseSnfOption,
-                { backgroundColor: '#FFF3E0', borderColor: '#FFB74D', borderWidth: 1 },
-                previewData?.base_snf_percentage === '8.5' && styles.baseSnfOptionSelected
-              ]}
-              onPress={() => {
-                recalculateWithNewBaseSnf('8.5');
-                setShowBaseSnfModal(false);
-              }}
-            >
-              <Text style={[
-                styles.baseSnfOptionText,
-                { color: '#E65100', fontWeight: '700' },
-                previewData?.base_snf_percentage === '8.5' && styles.baseSnfOptionTextSelected
-              ]}>8.5</Text>
-              {previewData?.base_snf_percentage === '8.5' && (
-                <View style={styles.selectedIndicator}>
-                  <Icon name="check" size={16} color="#0D47A1" />
-                </View>
-              )}
-            </TouchableOpacity>
+                    {/* Special highlighted 8.5 option */}
+                    <TouchableOpacity
+                      key={'8.5'}
+                      style={[
+                        styles.baseSnfOption,
+                        { backgroundColor: '#FFF3E0', borderColor: '#FFB74D', borderWidth: 1 },
+                        previewData?.base_snf_percentage === '8.5' && styles.baseSnfOptionSelected
+                      ]}
+                      onPress={() => {
+                        recalculateWithNewBaseSnf('8.5');
+                        setShowBaseSnfModal(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.baseSnfOptionText,
+                        { color: '#E65100', fontWeight: '700' },
+                        previewData?.base_snf_percentage === '8.5' && styles.baseSnfOptionTextSelected
+                      ]}>8.5</Text>
+                      {previewData?.base_snf_percentage === '8.5' && (
+                        <View style={styles.selectedIndicator}>
+                          <Icon name="check" size={16} color="#0D47A1" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
 
-            {allowedBaseSnfValues.map(value => (
-              <TouchableOpacity
-                key={value}
-                style={[
-                  styles.baseSnfOption,
-                  previewData?.base_snf_percentage === value && styles.baseSnfOptionSelected
-                ]}
-                onPress={() => {
-                  recalculateWithNewBaseSnf(value);
-                  setShowBaseSnfModal(false);
-                }}
-              >
-                <Text style={[
-                  styles.baseSnfOptionText,
-                  previewData?.base_snf_percentage === value && styles.baseSnfOptionTextSelected
-                ]}>
-                  {value}
-                </Text>
-                {previewData?.base_snf_percentage === value && (
-                  <View style={styles.selectedIndicator}>
-                    <Icon name="check" size={16} color="#0D47A1" />
+                    {allowedBaseSnfValues.map(value => (
+                      <TouchableOpacity
+                        key={value}
+                        style={[
+                          styles.baseSnfOption,
+                          previewData?.base_snf_percentage === value && styles.baseSnfOptionSelected
+                        ]}
+                        onPress={() => {
+                          recalculateWithNewBaseSnf(value);
+                          setShowBaseSnfModal(false);
+                        }}
+                      >
+                        <Text style={[
+                          styles.baseSnfOptionText,
+                          previewData?.base_snf_percentage === value && styles.baseSnfOptionTextSelected
+                        ]}>
+                          {value}
+                        </Text>
+                        {previewData?.base_snf_percentage === value && (
+                          <View style={styles.selectedIndicator}>
+                            <Icon name="check" size={16} color="#0D47A1" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
 
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.modalCancelButton}
                     onPress={() => setShowBaseSnfModal(false)}
                   >
@@ -940,13 +958,13 @@ const CollectionScreen = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Icon name="close" size={24} color="#fff" />
         </TouchableOpacity>
-        
+
         <Text style={styles.headerTitle}>{t('collection')}</Text>
       </View>
 
@@ -959,7 +977,7 @@ const CollectionScreen = ({ navigation }) => {
             </View>
             <Text style={styles.popupTitle}>Milk Rate Required</Text>
             <Text style={styles.popupText}>Please set the milk rate before adding collection.</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addRateButton}
               onPress={() => {
                 navigation.navigate('RateChart');
@@ -977,267 +995,267 @@ const CollectionScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={true}
           keyboardShouldPersistTaps="handled"
         >
-        {/* Top Row: Base SNF Toggle (left) and Change Rates (right) */}
-        <View style={styles.topRow}>
-          <BaseSnfToggle />
-          <TouchableOpacity 
-            style={styles.rateBox}
-            onPress={() => {
-              setTempBaseSnf(snf);
-              setTempClrConversionFactor(clrConversionFactor);
-              setTempFatSnfRatio(fatSnfRatio);
-              setShowChangeRatesModal(true);
-            }}
-          >
-            <View style={styles.rateContent}>
-              <Text style={styles.rateLabel}>{t('rate settings')}</Text>
-            </View>
-            <Icon name="cog" size={20} color="#0D47A1" style={styles.editIcon} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Customer Search Row */}
-        <Text style={styles.searchTitle}>{t('search customers')}</Text>
-        <View style={styles.customerSearchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Icon name="magnify" size={20} color="#666" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by ID or Name"
-              placeholderTextColor="#B0B0B0"
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity 
-                onPress={() => {
-                  setSearchQuery('');
-                  setSelectedCustomer(null);
-                  setShowCustomersList(false);
-                }}
-                style={styles.clearButton}
-              >
-                <Icon name="close" size={20} color="#666" />
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          <TouchableOpacity 
-            style={styles.addCustomerButton}
-            onPress={handleButtonPress(() => navigation.navigate('Customer'))}
-          >
-            <Icon name="plus" size={20} color="#0D47A1" />
-            <Text style={styles.addCustomerText}>{t('add')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Customer Search Results */}
-        {showCustomersList && (
-          <View style={styles.searchResultsContainer}>
-            {isLoadingCustomers ? (
-              <ActivityIndicator style={styles.searchLoader} color="#0D47A1" />
-            ) : filteredCustomers.length > 0 ? (
-              <FlatList
-                data={filteredCustomers}
-                keyExtractor={(item) => item.id.toString()}
-                style={styles.searchResults}
-                nestedScrollEnabled={true}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.searchResultItem}
-                    onPress={() => handleSelectCustomer(item)}
-                  >
-                    <View>
-                      <Text style={styles.customerName}>{item.customer_id}-{item.name}</Text>
-                      <Text style={styles.customerDetails}>
-                        {item.phone || 'No phone'}
-                      </Text>
-                    </View>
-                    {item.id === selectedCustomer?.id && (
-                      <Icon name="check" size={20} color="#4CAF50" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            ) : (
-              <View style={styles.noResultsContainer}>
-                <Text style={styles.noResultsText}>No customers found</Text>
+          {/* Top Row: Base SNF Toggle (left) and Change Rates (right) */}
+          <View style={styles.topRow}>
+            <BaseSnfToggle />
+            <TouchableOpacity
+              style={styles.rateBox}
+              onPress={() => {
+                setTempBaseSnf(snf);
+                setTempClrConversionFactor(clrConversionFactor);
+                setTempFatSnfRatio(fatSnfRatio);
+                setShowChangeRatesModal(true);
+              }}
+            >
+              <View style={styles.rateContent}>
+                <Text style={styles.rateLabel}>{t('rate settings')}</Text>
               </View>
-            )}
+              <Icon name="cog" size={20} color="#0D47A1" style={styles.editIcon} />
+            </TouchableOpacity>
           </View>
-        )}
 
-        {/* Add error message if exists */}
-        {snfError ? (
-          <Text style={styles.errorText}>{snfError}</Text>
-        ) : null}
+          {/* Customer Search Row */}
+          <Text style={styles.searchTitle}>{t('search customers')}</Text>
+          <View style={styles.customerSearchContainer}>
+            <View style={styles.searchInputContainer}>
+              <Icon name="magnify" size={20} color="#666" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by ID or Name"
+                placeholderTextColor="#B0B0B0"
+                value={searchQuery}
+                onChangeText={handleSearch}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearchQuery('');
+                    setSelectedCustomer(null);
+                    setShowCustomersList(false);
+                  }}
+                  style={styles.clearButton}
+                >
+                  <Icon name="close" size={20} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
 
-        {/* Add these new components */}
-        <View style={styles.selectionContainer}>
-          {/* Date Selector */}
-          <TouchableOpacity 
-            style={styles.dateSelector}
-            onPress={handleButtonPress(() => setShowDatePicker(true))}
-          >
-            <Text style={styles.dateSelectorText}>
-              {formatDate(selectedDate)}
-            </Text>
-            <Icon name="calendar" size={16} color="#0D47A1" />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.addCustomerButton}
+              onPress={handleButtonPress(() => navigation.navigate('Customer'))}
+            >
+              <Icon name="plus" size={20} color="#0D47A1" />
+              <Text style={styles.addCustomerText}>{t('add')}</Text>
+            </TouchableOpacity>
+          </View>
 
-          {/* Time Dropdown */}
-          <TouchableOpacity 
-            style={styles.timeSelector}
-            onPress={handleButtonPress(() => setShowTimeModal(true))}
-          >
-            <View style={styles.timeSelectorContent}>
-              <Text style={styles.timeSelectorText}>
-                {selectedTime ? selectedTime.charAt(0).toUpperCase() + selectedTime.slice(1) : 'Select Time'}
+          {/* Customer Search Results */}
+          {showCustomersList && (
+            <View style={styles.searchResultsContainer}>
+              {isLoadingCustomers ? (
+                <ActivityIndicator style={styles.searchLoader} color="#0D47A1" />
+              ) : filteredCustomers.length > 0 ? (
+                <FlatList
+                  data={filteredCustomers}
+                  keyExtractor={(item) => item.id.toString()}
+                  style={styles.searchResults}
+                  nestedScrollEnabled={true}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.searchResultItem}
+                      onPress={() => handleSelectCustomer(item)}
+                    >
+                      <View>
+                        <Text style={styles.customerName}>{item.customer_id}-{item.name}</Text>
+                        <Text style={styles.customerDetails}>
+                          {item.phone || 'No phone'}
+                        </Text>
+                      </View>
+                      {item.id === selectedCustomer?.id && (
+                        <Icon name="check" size={20} color="#4CAF50" />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                />
+              ) : (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>No customers found</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Add error message if exists */}
+          {snfError ? (
+            <Text style={styles.errorText}>{snfError}</Text>
+          ) : null}
+
+          {/* Add these new components */}
+          <View style={styles.selectionContainer}>
+            {/* Date Selector */}
+            <TouchableOpacity
+              style={styles.dateSelector}
+              onPress={handleButtonPress(() => setShowDatePicker(true))}
+            >
+              <Text style={styles.dateSelectorText}>
+                {formatDate(selectedDate)}
               </Text>
-            </View>
-            <Icon name="chevron-down" size={16} color="#0D47A1" />
-          </TouchableOpacity>
+              <Icon name="calendar" size={16} color="#0D47A1" />
+            </TouchableOpacity>
 
-          {/* Animal Type Dropdown */}
-          <TouchableOpacity 
-            style={styles.animalSelector}
-            onPress={handleButtonPress(() => setShowAnimalModal(true))}
-          >
-            <Text style={styles.animalSelectorText}>
-              {selectedAnimal.charAt(0).toUpperCase() + selectedAnimal.slice(1)}
-            </Text>
-            <Icon name="chevron-down" size={16} color="#0D47A1" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.formContainer}>
-          {/* Weight and Fat% Row */}
-          <View style={styles.measureRow}>
-            <View style={styles.inputGroup}>
-              <View style={styles.labelWithRadio}>
-                <View style={{ width: 20 }} />
-                <Text style={styles.inputLabel}>Weight</Text>
+            {/* Time Dropdown */}
+            <TouchableOpacity
+              style={styles.timeSelector}
+              onPress={handleButtonPress(() => setShowTimeModal(true))}
+            >
+              <View style={styles.timeSelectorContent}>
+                <Text style={styles.timeSelectorText}>
+                  {selectedTime ? selectedTime.charAt(0).toUpperCase() + selectedTime.slice(1) : 'Select Time'}
+                </Text>
               </View>
-              <TextInput
-                style={[
-                  styles.measureInput,
-                  errors.weight && styles.inputError,
-                  { textAlign: (isWeightFocused || !!weight) ? 'left' : 'center' }
-                ]}
-                onFocus={() => setIsWeightFocused(true)}
-                onBlur={() => setIsWeightFocused(false)}
-                value={weight}
-                onChangeText={(text) => {
-                  // Remove any non-numeric characters except decimal point
-                  const sanitizedText = text.replace(/[^0-9.]/g, '');
-                  
-                  // Ensure only one decimal point
-                  const parts = sanitizedText.split('.');
-                  if (parts.length > 2) return;
-                  
-                  // Limit to two decimal places only
-                  if (parts[1] && parts[1].length > 2) {
-                    return;
-                  }
-                  
-                  setWeight(sanitizedText);
-                }}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-                placeholderTextColor="#B0B0B0"
-              />
-              {errors.weight && <Text style={styles.errorText}>{errors.weight}</Text>}
-            </View>
+              <Icon name="chevron-down" size={16} color="#0D47A1" />
+            </TouchableOpacity>
 
-            <View style={[styles.inputGroup, { marginLeft: 12 }]}>
-              <View style={styles.labelWithRadio}>
-                <View style={{ width: 20 }} /> {/* This creates the same spacing as radio button */}
-                <Text style={styles.inputLabel}>Fat %</Text>
-              </View>
-              <TextInput
-                style={[
-                  styles.measureInput,
-                  errors.fatPercent && styles.inputError,
-                  { textAlign: (isFatFocused || !!fatPercent) ? 'left' : 'center' }
-                ]}
-                onFocus={() => setIsFatFocused(true)}
-                onBlur={() => setIsFatFocused(false)}
-                value={fatPercent}
-                onChangeText={handleFatPercentInput}
-                keyboardType="decimal-pad"
-                placeholder="0.0"
-                placeholderTextColor="#B0B0B0"
-              />
-              {errors.fatPercent && <Text style={styles.errorText}>{errors.fatPercent}</Text>}
-            </View>
+            {/* Animal Type Dropdown */}
+            <TouchableOpacity
+              style={styles.animalSelector}
+              onPress={handleButtonPress(() => setShowAnimalModal(true))}
+            >
+              <Text style={styles.animalSelectorText}>
+                {selectedAnimal.charAt(0).toUpperCase() + selectedAnimal.slice(1)}
+              </Text>
+              <Icon name="chevron-down" size={16} color="#0D47A1" />
+            </TouchableOpacity>
           </View>
 
-          {/* SNF/CLR Selection Row */}
-          <View style={styles.measureRow}>
-            <View style={styles.inputGroup}>
-              <View style={styles.labelWithRadio}>
-                <View style={[styles.radioButton, !selectedRadios.snf && styles.radioButtonFaded]}>
-                  <View style={[styles.radioCircle, selectedRadios.snf && styles.radioCircleSelected]} />
+          <View style={styles.formContainer}>
+            {/* Weight and Fat% Row */}
+            <View style={styles.measureRow}>
+              <View style={styles.inputGroup}>
+                <View style={styles.labelWithRadio}>
+                  <View style={{ width: 20 }} />
+                  <Text style={styles.inputLabel}>Weight</Text>
                 </View>
-                <Text style={[styles.inputLabel, !selectedRadios.snf && styles.disabledLabel]}>SNF%</Text>
+                <TextInput
+                  style={[
+                    styles.measureInput,
+                    errors.weight && styles.inputError,
+                    { textAlign: (isWeightFocused || !!weight) ? 'left' : 'center' }
+                  ]}
+                  onFocus={() => setIsWeightFocused(true)}
+                  onBlur={() => setIsWeightFocused(false)}
+                  value={weight}
+                  onChangeText={(text) => {
+                    // Remove any non-numeric characters except decimal point
+                    const sanitizedText = text.replace(/[^0-9.]/g, '');
+
+                    // Ensure only one decimal point
+                    const parts = sanitizedText.split('.');
+                    if (parts.length > 2) return;
+
+                    // Limit to two decimal places only
+                    if (parts[1] && parts[1].length > 2) {
+                      return;
+                    }
+
+                    setWeight(sanitizedText);
+                  }}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor="#B0B0B0"
+                />
+                {errors.weight && <Text style={styles.errorText}>{errors.weight}</Text>}
               </View>
-              <TextInput
-                style={[
-                  styles.measureInput,
-                  { width: 75 },
-                  errors.snfPercent && styles.inputError,
-                  { textAlign: (isSnfFocused || !!snfPercent) ? 'left' : 'center' },
-                  !selectedRadios.snf && styles.disabledInput
-                ]}
-                onFocus={() => setIsSnfFocused(true)}
-                onBlur={() => setIsSnfFocused(false)}
-                value={snfPercent}
-                onChangeText={handleSnfPercentInput}
-                placeholder="0.0"
-                placeholderTextColor="#B0B0B0"
-                keyboardType="decimal-pad"
-                editable={selectedRadios.snf}
-              />
-              {errors.snfPercent && <Text style={styles.errorText}>{errors.snfPercent}</Text>}
+
+              <View style={[styles.inputGroup, { marginLeft: 12 }]}>
+                <View style={styles.labelWithRadio}>
+                  <View style={{ width: 20 }} /> {/* This creates the same spacing as radio button */}
+                  <Text style={styles.inputLabel}>Fat %</Text>
+                </View>
+                <TextInput
+                  style={[
+                    styles.measureInput,
+                    errors.fatPercent && styles.inputError,
+                    { textAlign: (isFatFocused || !!fatPercent) ? 'left' : 'center' }
+                  ]}
+                  onFocus={() => setIsFatFocused(true)}
+                  onBlur={() => setIsFatFocused(false)}
+                  value={fatPercent}
+                  onChangeText={handleFatPercentInput}
+                  keyboardType="decimal-pad"
+                  placeholder="0.0"
+                  placeholderTextColor="#B0B0B0"
+                />
+                {errors.fatPercent && <Text style={styles.errorText}>{errors.fatPercent}</Text>}
+              </View>
             </View>
 
-            <View style={[styles.inputGroup, { marginLeft: 12 }]}>
-              <View style={styles.labelWithRadio}>
-                <View style={[styles.radioButton, { marginLeft: 6 }, !selectedRadios.clr && styles.radioButtonFaded]}>
-                  <View style={[styles.radioCircle, selectedRadios.clr && styles.radioCircleSelected]} />
+            {/* SNF/CLR Selection Row */}
+            <View style={styles.measureRow}>
+              <View style={styles.inputGroup}>
+                <View style={styles.labelWithRadio}>
+                  <View style={[styles.radioButton, !selectedRadios.snf && styles.radioButtonFaded]}>
+                    <View style={[styles.radioCircle, selectedRadios.snf && styles.radioCircleSelected]} />
+                  </View>
+                  <Text style={[styles.inputLabel, !selectedRadios.snf && styles.disabledLabel]}>SNF%</Text>
                 </View>
-                <Text style={[styles.inputLabel, !selectedRadios.clr && styles.disabledLabel]}>CLR</Text>
+                <TextInput
+                  style={[
+                    styles.measureInput,
+                    { width: 75 },
+                    errors.snfPercent && styles.inputError,
+                    { textAlign: (isSnfFocused || !!snfPercent) ? 'left' : 'center' },
+                    !selectedRadios.snf && styles.disabledInput
+                  ]}
+                  onFocus={() => setIsSnfFocused(true)}
+                  onBlur={() => setIsSnfFocused(false)}
+                  value={snfPercent}
+                  onChangeText={handleSnfPercentInput}
+                  placeholder="0.0"
+                  placeholderTextColor="#B0B0B0"
+                  keyboardType="decimal-pad"
+                  editable={selectedRadios.snf}
+                />
+                {errors.snfPercent && <Text style={styles.errorText}>{errors.snfPercent}</Text>}
               </View>
-              <TextInput
-                style={[
-                  styles.measureInput,
-                  { width: 75 },
-                  errors.clr && styles.inputError,
-                  { textAlign: (isClrFocused || !!clr) ? 'left' : 'center' },
-                  !selectedRadios.clr && styles.disabledInput
-                ]}
-                onFocus={() => setIsClrFocused(true)}
-                onBlur={() => setIsClrFocused(false)}
-                value={clr}
-                onChangeText={handleClrInput}
-                placeholder="0.00"
-                placeholderTextColor="#B0B0B0"
-                keyboardType="decimal-pad"
-                editable={selectedRadios.clr}
-              />
-              {errors.clr && <Text style={styles.errorText}>{errors.clr}</Text>}
-            </View>
-          </View>
 
-          {/* Pro-Rata Navigation (moved inside form for alignment) */}
-          {/* <View style={{ marginTop: 10 }}>
+              <View style={[styles.inputGroup, { marginLeft: 12 }]}>
+                <View style={styles.labelWithRadio}>
+                  <View style={[styles.radioButton, { marginLeft: 6 }, !selectedRadios.clr && styles.radioButtonFaded]}>
+                    <View style={[styles.radioCircle, selectedRadios.clr && styles.radioCircleSelected]} />
+                  </View>
+                  <Text style={[styles.inputLabel, !selectedRadios.clr && styles.disabledLabel]}>CLR</Text>
+                </View>
+                <TextInput
+                  style={[
+                    styles.measureInput,
+                    { width: 75 },
+                    errors.clr && styles.inputError,
+                    { textAlign: (isClrFocused || !!clr) ? 'left' : 'center' },
+                    !selectedRadios.clr && styles.disabledInput
+                  ]}
+                  onFocus={() => setIsClrFocused(true)}
+                  onBlur={() => setIsClrFocused(false)}
+                  value={clr}
+                  onChangeText={handleClrInput}
+                  placeholder="0.00"
+                  placeholderTextColor="#B0B0B0"
+                  keyboardType="decimal-pad"
+                  editable={selectedRadios.clr}
+                />
+                {errors.clr && <Text style={styles.errorText}>{errors.clr}</Text>}
+              </View>
+            </View>
+
+            {/* Pro-Rata Navigation (moved inside form for alignment) */}
+            {/* <View style={{ marginTop: 10 }}>
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#E0E0E0', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, gap: 8 }}
               onPress={() => navigation.navigate('ProRataCollectionScreen')}
@@ -1246,36 +1264,36 @@ const CollectionScreen = ({ navigation }) => {
               <Text style={{ color: '#0D47A1', fontSize: 14, fontWeight: '600' }}>{t("pro-rata")}</Text>
             </TouchableOpacity>
           </View> */}
-        </View>
-
-        
-
-        {/* Next Button */}
-        <View style={styles.nextButtonContainer}>
-          <TouchableOpacity 
-            style={[
-              styles.nextButton,
-              (!weight || !fatPercent || !snfPercent) && styles.nextButtonDisabled
-            ]}
-            onPress={handleButtonPress(handleSave)}
-            disabled={!weight || !fatPercent || !snfPercent}
-          >
-            <Text style={styles.nextButtonText}>{t('next')}</Text>
-            <Icon name="arrow-right" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Preview Table */}
-        {latestCollection && (
-          <View style={styles.previewSection}>
-            <PreviewTable navigation={navigation} />
           </View>
-        )}
 
-        {/* Add error message for radio selection */}
-        {errors.radio && (
-          <Text style={[styles.errorText, { marginTop: 10 }]}>{errors.radio}</Text>
-        )}
+
+
+          {/* Next Button */}
+          <View style={styles.nextButtonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.nextButton,
+                (!weight || !fatPercent || !snfPercent) && styles.nextButtonDisabled
+              ]}
+              onPress={handleButtonPress(handleSave)}
+              disabled={!weight || !fatPercent || !snfPercent}
+            >
+              <Text style={styles.nextButtonText}>{t('next')}</Text>
+              <Icon name="arrow-right" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Preview Table */}
+          {latestCollection && (
+            <View style={styles.previewSection}>
+              <PreviewTable navigation={navigation} />
+            </View>
+          )}
+
+          {/* Add error message for radio selection */}
+          {errors.radio && (
+            <Text style={[styles.errorText, { marginTop: 10 }]}>{errors.radio}</Text>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1306,7 +1324,7 @@ const CollectionScreen = ({ navigation }) => {
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setShowSnfModal(false)}
             >
@@ -1341,7 +1359,7 @@ const CollectionScreen = ({ navigation }) => {
               ))}
             </View>
             <View style={styles.modalButtonsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowAnimalModal(false)}
               >
@@ -1376,17 +1394,17 @@ const CollectionScreen = ({ navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.datePickerModal}>
             <Text style={styles.modalTitle}>{t('select date')}</Text>
-            
+
             <View style={styles.datePickerContent}>
               <View style={styles.datePickerColumns}>
                 {/* Year Column */}
                 <View style={styles.dateColumn}>
                   <Text style={styles.datePickerLabel}>{t('year')}</Text>
-                  <ScrollView 
+                  <ScrollView
                     style={styles.datePickerScroll}
                     showsVerticalScrollIndicator={false}
                   >
-                    {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(year => (
+                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
                       <TouchableOpacity
                         key={year}
                         style={[
@@ -1411,7 +1429,7 @@ const CollectionScreen = ({ navigation }) => {
                 {/* Month Column */}
                 <View style={styles.dateColumn}>
                   <Text style={styles.datePickerLabel}>{t('month')}</Text>
-                  <ScrollView 
+                  <ScrollView
                     style={styles.datePickerScroll}
                     showsVerticalScrollIndicator={false}
                   >
@@ -1445,13 +1463,13 @@ const CollectionScreen = ({ navigation }) => {
                 {/* Day Column */}
                 <View style={styles.dateColumn}>
                   <Text style={styles.datePickerLabel}>{t('day')}</Text>
-                  <ScrollView 
+                  <ScrollView
                     style={styles.datePickerScroll}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.datePickerScrollContent}
                   >
                     {Array.from(
-                      {length: new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()}, 
+                      { length: new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate() },
                       (_, i) => i + 1
                     ).map(day => (
                       <TouchableOpacity
@@ -1478,13 +1496,13 @@ const CollectionScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.modalButtonsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowDatePicker(false)}
               >
                 <Text style={[styles.modalButtonText, styles.cancelButtonText]}>{t('cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={() => setShowDatePicker(false)}
               >
@@ -1506,7 +1524,7 @@ const CollectionScreen = ({ navigation }) => {
           <View style={styles.previewModalContent}>
             <View style={styles.previewHeader}>
               <Text style={styles.previewHeaderTitle}>{t('collection preview')}</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowPreviewModal(false)}
                 style={styles.closeButton}
               >
@@ -1514,7 +1532,7 @@ const CollectionScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <ScrollView
               style={styles.previewScrollView}
               showsVerticalScrollIndicator={true}
               contentContainerStyle={styles.previewScrollViewContent}
@@ -1531,7 +1549,7 @@ const CollectionScreen = ({ navigation }) => {
                       <Text style={styles.customerName}>{selectedCustomer?.customer_id}-{selectedCustomer?.name}</Text>
                       {/* Removed phone number display as requested */}
                       <Text style={styles.customerDate}>
-                        <Icon name="calendar" size={14} color="#666" style={{marginRight: 4}} />
+                        <Icon name="calendar" size={14} color="#666" style={{ marginRight: 4 }} />
                         {formatDate(new Date(previewData.collection_date))} - {previewData.collection_time.charAt(0).toUpperCase() + previewData.collection_time.slice(1)}
                       </Text>
                     </View>
@@ -1606,7 +1624,7 @@ const CollectionScreen = ({ navigation }) => {
             </ScrollView>
 
             <View style={styles.previewActions}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.editButton}
                 onPress={() => setShowPreviewModal(false)}
                 disabled={isConfirmLoading}
@@ -1614,7 +1632,7 @@ const CollectionScreen = ({ navigation }) => {
                 <Icon name="pencil" size={20} color="#0D47A1" />
                 <Text style={styles.editButtonText}>{t('edit')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.previewConfirmButton, isConfirmLoading && styles.disabledButton]}
                 onPress={handleButtonPress(handleConfirmSave)}
                 disabled={isConfirmLoading}
@@ -1664,7 +1682,7 @@ const CollectionScreen = ({ navigation }) => {
               ))}
             </View>
             <View style={styles.modalButtonsContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowTimeModal(false)}
               >
@@ -1682,7 +1700,7 @@ const CollectionScreen = ({ navigation }) => {
         animationType="fade"
         onRequestClose={() => setShowLowWalletPopup(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowLowWalletPopup(false)}
@@ -1693,8 +1711,8 @@ const CollectionScreen = ({ navigation }) => {
             <Text style={styles.modalMessage}>
               {t('your collection is not saved because your wallet balance is low.')}
             </Text>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.rechargeButton}
               onPress={handleButtonPress(() => {
                 setShowLowWalletPopup(false);
@@ -1704,7 +1722,7 @@ const CollectionScreen = ({ navigation }) => {
               <Text style={styles.rechargeButtonText}>{t('recharge now')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.laterButton}
               onPress={handleButtonPress(() => setShowLowWalletPopup(false))}
             >
@@ -1721,7 +1739,7 @@ const CollectionScreen = ({ navigation }) => {
         animationType="fade"
         onRequestClose={() => setShowDuplicateCollectionPopup(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={handleButtonPress(() => setShowDuplicateCollectionPopup(false))}
@@ -1734,7 +1752,7 @@ const CollectionScreen = ({ navigation }) => {
             <Text style={styles.modalMessage}>
               {t('an identical collection already exists for this customer')}
             </Text>
-            
+
             <View style={styles.duplicateInfoBox}>
               <View style={styles.duplicateInfoRow}>
                 <Icon name="calendar" size={20} color="#0D47A1" />
@@ -1749,8 +1767,8 @@ const CollectionScreen = ({ navigation }) => {
                 </Text>
               </View>
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.duplicatePrimaryButton}
               onPress={() => {
                 setShowDuplicateCollectionPopup(false);
@@ -1760,7 +1778,7 @@ const CollectionScreen = ({ navigation }) => {
               <Text style={styles.duplicatePrimaryButtonText}>{t('clear & start new')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.duplicateSecondaryButton}
               onPress={() => setShowDuplicateCollectionPopup(false)}
             >
@@ -1913,11 +1931,11 @@ const CollectionScreen = ({ navigation }) => {
             {pendingRateType && (
               <>
                 <Text style={styles.baseSnfConfirmMessage}>
-                  {t('confirm rate type change', { value: pendingRateType === 'fat_snf' ? 'FAT + SNF' : 'FAT + CLR' })}
+                  {t('confirm rate type change', { value: RATE_TYPE_LABELS[pendingRateType] || pendingRateType })}
                 </Text>
                 <View style={styles.baseSnfValueChip}>
                   <Text style={styles.baseSnfValueChipText}>
-                    {pendingRateType === 'fat_snf' ? 'FAT + SNF' : 'FAT + CLR'}
+                    {RATE_TYPE_LABELS[pendingRateType] || pendingRateType}
                   </Text>
                 </View>
                 <Text style={styles.baseSnfConfirmSubtext}>
@@ -1929,6 +1947,7 @@ const CollectionScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.baseSnfConfirmSecondaryButton}
                 onPress={handleButtonPress(() => {
+                  setRateTypePickerValue(tempRateType);
                   setShowRateTypeConfirm(false);
                   setPendingRateType(null);
                 })}
@@ -1940,35 +1959,10 @@ const CollectionScreen = ({ navigation }) => {
                 onPress={handleButtonPress(async () => {
                   if (pendingRateType) {
                     setTempRateType(pendingRateType);
-                    
+                    setRateTypePickerValue(pendingRateType);
+
                     // Update radio buttons immediately for better UX
-                    if (pendingRateType === 'fat_snf') {
-                      setSelectedRadios({
-                        snf: true,
-                        clr: false
-                      });
-                    } else if (pendingRateType === 'fat_clr') {
-                      setSelectedRadios({
-                        snf: false,
-                        clr: true
-                      });
-                    }
-                    
-                    // Save to backend immediately
-                    try {
-                      // We need to get the dairy info first to get the ID and other required fields
-                      const dairyInfo = await getDairyInfo();
-                      if (dairyInfo) {
-                        // Update the dairy info with the new rate type
-                        await updateDairyInfo({
-                          ...dairyInfo,  // Include all existing dairy info
-                          rate_type: pendingRateType
-                        });
-                        console.log('Rate type saved to backend:', pendingRateType);
-                      }
-                    } catch (error) {
-                      console.error('Error saving rate type to backend:', error);
-                    }
+                    setSelectedRadios(getRadiosForRateType(pendingRateType));
                   }
                   setShowRateTypeConfirm(false);
                   setPendingRateType(null);
@@ -2066,160 +2060,152 @@ const CollectionScreen = ({ navigation }) => {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-                {/* Milk Rate Section */}
-                <View style={styles.changeRatesSection}>
-                  <Text style={styles.changeRatesSectionTitle}>{t('milk rate')}</Text>
-                  <TouchableOpacity
-                    style={styles.changeRatesMilkRateButton}
-                    onPress={() => {
-                      setShowChangeRatesModal(false);
-                      navigation.navigate('RateChart');
+              {/* Milk Rate Section */}
+              <View style={styles.changeRatesSection}>
+                <Text style={styles.changeRatesSectionTitle}>{t('milk rate')}</Text>
+                <TouchableOpacity
+                  style={styles.changeRatesMilkRateButton}
+                  onPress={() => {
+                    setShowChangeRatesModal(false);
+                    navigation.navigate('RateChart');
+                  }}
+                >
+                  <View style={styles.changeRatesMilkRateContent}>
+                    <Text style={styles.changeRatesMilkRateLabel}>
+                      {t('current milk rate')}
+                    </Text>
+                    {isLoadingRate ? (
+                      <ActivityIndicator size="small" color="#0D47A1" />
+                    ) : (
+                      <Text style={styles.changeRatesMilkRateValue}>₹{currentRate || '0'}</Text>
+                    )}
+                  </View>
+                  <Icon name="chevron-right" size={24} color="#0D47A1" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Rate Type Section */}
+              <View style={styles.changeRatesSection}>
+                <Text style={styles.changeRatesSectionTitle}>{t('rate type')}</Text>
+                <View style={styles.rateTypePickerContainer}>
+                  <Picker
+                    selectedValue={rateTypePickerValue}
+                    onValueChange={(value) => {
+                      if (value !== tempRateType) {
+                        setPendingRateType(value);
+                        setRateTypePickerValue(value);
+                        setShowRateTypeConfirm(true);
+                      }
                     }}
+                    style={styles.rateTypePicker}
+                    dropdownIconColor="#0D47A1"
                   >
-                    <View style={styles.changeRatesMilkRateContent}>
-                      <Text style={styles.changeRatesMilkRateLabel}>
-                        {t('current milk rate')}
-                      </Text>
-                      {isLoadingRate ? (
-                        <ActivityIndicator size="small" color="#0D47A1" />
-                      ) : (
-                        <Text style={styles.changeRatesMilkRateValue}>₹{currentRate || '0'}</Text>
-                      )}
-                    </View>
-                    <Icon name="chevron-right" size={24} color="#0D47A1" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Rate Type Section */}
-                <View style={styles.changeRatesSection}>
-                  <Text style={styles.changeRatesSectionTitle}>{t('rate type')}</Text>
-                  <View style={styles.changeRatesToggleContainer}>
                     {RATE_TYPES.map((option) => (
-                      <TouchableOpacity
-                        key={option.value}
-                        style={[
-                          styles.changeRatesToggleOption,
-                          tempRateType === option.value && styles.changeRatesToggleOptionSelected
-                        ]}
-                        onPress={() => {
-                          if (tempRateType !== option.value) {
-                            setPendingRateType(option.value);
-                            setShowRateTypeConfirm(true);
-                          }
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.changeRatesToggleText,
-                            tempRateType === option.value && styles.changeRatesToggleTextSelected
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </TouchableOpacity>
+                      <Picker.Item label={option.label} value={option.value} key={option.value} />
                     ))}
-                  </View>
+                  </Picker>
                 </View>
+              </View>
 
-                {/* Base SNF Section */}
-                <View style={styles.changeRatesSection}>
-                  <Text style={styles.changeRatesSectionTitle}>{t('base snf')}</Text>
-                  <View style={styles.changeRatesToggleContainer}>
-                    {['9.0', '8.5'].map((value) => (
-                      <TouchableOpacity
-                        key={value}
+              {/* Base SNF Section */}
+              <View style={styles.changeRatesSection}>
+                <Text style={styles.changeRatesSectionTitle}>{t('base snf')}</Text>
+                <View style={styles.changeRatesToggleContainer}>
+                  {['9.0', '8.5'].map((value) => (
+                    <TouchableOpacity
+                      key={value}
+                      style={[
+                        styles.changeRatesToggleOption,
+                        tempBaseSnf === value && styles.changeRatesToggleOptionSelected
+                      ]}
+                      onPress={() => {
+                        if (tempBaseSnf !== value) {
+                          setPendingBaseSnf(value);
+                          setBaseSnfConfirmSource('changeRates');
+                          setShowBaseSnfConfirm(true);
+                        }
+                      }}
+                    >
+                      <Text
                         style={[
-                          styles.changeRatesToggleOption,
-                          tempBaseSnf === value && styles.changeRatesToggleOptionSelected
+                          styles.changeRatesToggleText,
+                          tempBaseSnf === value && styles.changeRatesToggleTextSelected
                         ]}
-                        onPress={() => {
-                          if (tempBaseSnf !== value) {
-                            setPendingBaseSnf(value);
-                            setBaseSnfConfirmSource('changeRates');
-                            setShowBaseSnfConfirm(true);
-                          }
-                        }}
                       >
-                        <Text
-                          style={[
-                            styles.changeRatesToggleText,
-                            tempBaseSnf === value && styles.changeRatesToggleTextSelected
-                          ]}
-                        >
-                          {value}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                        {value}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
+              </View>
 
-                {/* Fat/SNF Ratio Section */}
-                <View style={styles.changeRatesSection}>
-                  <Text style={styles.changeRatesSectionTitle}>{t('fat snf ratio')}</Text>
-                  <View style={styles.changeRatesToggleContainer}>
-                    {[
-                      { value: '60_40', label: '60/40' },
-                      { value: '52_48', label: '52/48' }
-                    ].map((option) => (
-                      <TouchableOpacity
-                        key={option.value}
+              {/* Fat/SNF Ratio Section */}
+              <View style={styles.changeRatesSection}>
+                <Text style={styles.changeRatesSectionTitle}>{t('fat snf ratio')}</Text>
+                <View style={styles.changeRatesToggleContainer}>
+                  {[
+                    { value: '60_40', label: '60/40' },
+                    { value: '52_48', label: '52/48' }
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.changeRatesToggleOption,
+                        tempFatSnfRatio === option.value && styles.changeRatesToggleOptionSelected
+                      ]}
+                      onPress={() => {
+                        if (tempFatSnfRatio !== option.value) {
+                          setPendingFatSnfRatio(option.value);
+                          setShowFatSnfRatioConfirm(true);
+                        }
+                      }}
+                    >
+                      <Text
                         style={[
-                          styles.changeRatesToggleOption,
-                          tempFatSnfRatio === option.value && styles.changeRatesToggleOptionSelected
+                          styles.changeRatesToggleText,
+                          tempFatSnfRatio === option.value && styles.changeRatesToggleTextSelected
                         ]}
-                        onPress={() => {
-                          if (tempFatSnfRatio !== option.value) {
-                            setPendingFatSnfRatio(option.value);
-                            setShowFatSnfRatioConfirm(true);
-                          }
-                        }}
                       >
-                        <Text
-                          style={[
-                            styles.changeRatesToggleText,
-                            tempFatSnfRatio === option.value && styles.changeRatesToggleTextSelected
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
+              </View>
 
-                {/* CLR Conversion Factor Section */}
-                <View style={styles.changeRatesSection}>
-                  <Text style={styles.changeRatesSectionTitle}>{t('clr conversion factor')}</Text>
-                  <Text style={styles.changeRatesSectionDescription}>
-                    {t('clr conversion description')}
-                  </Text>
-                  <View style={styles.changeRatesToggleContainer}>
-                    {['0.14', '0.50'].map((value) => (
-                      <TouchableOpacity
-                        key={value}
+              {/* CLR Conversion Factor Section */}
+              <View style={styles.changeRatesSection}>
+                <Text style={styles.changeRatesSectionTitle}>{t('clr conversion factor')}</Text>
+                <Text style={styles.changeRatesSectionDescription}>
+                  {t('clr conversion description')}
+                </Text>
+                <View style={styles.changeRatesToggleContainer}>
+                  {['0.14', '0.50'].map((value) => (
+                    <TouchableOpacity
+                      key={value}
+                      style={[
+                        styles.changeRatesToggleOption,
+                        tempClrConversionFactor === value && styles.changeRatesToggleOptionSelected
+                      ]}
+                      onPress={() => {
+                        if (tempClrConversionFactor !== value) {
+                          setPendingClrConversion(value);
+                          setShowClrConversionConfirm(true);
+                        }
+                      }}
+                    >
+                      <Text
                         style={[
-                          styles.changeRatesToggleOption,
-                          tempClrConversionFactor === value && styles.changeRatesToggleOptionSelected
+                          styles.changeRatesToggleText,
+                          tempClrConversionFactor === value && styles.changeRatesToggleTextSelected
                         ]}
-                        onPress={() => {
-                          if (tempClrConversionFactor !== value) {
-                            setPendingClrConversion(value);
-                            setShowClrConversionConfirm(true);
-                          }
-                        }}
                       >
-                        <Text
-                          style={[
-                            styles.changeRatesToggleText,
-                            tempClrConversionFactor === value && styles.changeRatesToggleTextSelected
-                          ]}
-                        >
-                          {value}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                        {value}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
+              </View>
             </ScrollView>
 
             {/* Action Buttons */}
@@ -2233,57 +2219,15 @@ const CollectionScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.changeRatesSaveButton}
                 onPress={async () => {
-                  // Save base SNF
-                  await handleBaseSnfToggle(tempBaseSnf);
-                  
-                  // Save CLR conversion factor
-                  try {
-                    setClrConversionFactor(tempClrConversionFactor);
-                    await AsyncStorage.setItem('@clr_conversion_factor', tempClrConversionFactor);
-                  } catch (e) {
-                    console.error('Error saving CLR conversion factor:', e);
-                  }
-                  
-                  // Save Fat/SNF ratio
-                  try {
-                    setFatSnfRatio(tempFatSnfRatio);
-                    await AsyncStorage.setItem('@fat_snf_ratio', tempFatSnfRatio);
-                  } catch (e) {
-                    console.error('Error saving Fat/SNF ratio:', e);
-                  }
+                  const overrides = {
+                    base_snf: tempBaseSnf,
+                    clr_conversion_factor: tempClrConversionFactor,
+                    fat_snf_ratio: tempFatSnfRatio,
+                    rate_type: tempRateType
+                  };
 
-                  // Save Rate Type and update radio buttons
-                  try {
-                    // Get current dairy info to check if rate type has changed
-                    const dairyInfo = await getDairyInfo();
-                    
-                    // Only update if the rate type has changed from what's in the backend
-                    if (dairyInfo && dairyInfo.rate_type !== tempRateType) {
-                      // Update the dairy info with the new rate type
-                      await updateDairyInfo({
-                        ...dairyInfo,
-                        rate_type: tempRateType
-                      });
-                      
-                      console.log('Rate type saved to backend from Save button:', tempRateType);
-                    }
-                    
-                    // Update the radio buttons based on the selected rate type
-                    if (tempRateType === 'fat_snf') {
-                      setSelectedRadios({
-                        snf: true,
-                        clr: false
-                      });
-                    } else if (tempRateType === 'fat_clr') {
-                      setSelectedRadios({
-                        snf: false,
-                        clr: true
-                      });
-                    }
-                  } catch (e) {
-                    console.error('Error saving rate type:', e);
-                  }
-                  
+                  await persistDairySettings(overrides, { skipIfUnchanged: true });
+                  setSelectedRadios(getRadiosForRateType(tempRateType));
                   setShowChangeRatesModal(false);
                 }}
               >
@@ -2458,7 +2402,7 @@ const styles = StyleSheet.create({
   rateLabel: {
     fontSize: 14,  // Reduced from 14
     color: '#000',
-    marginRight: 0,  
+    marginRight: 0,
     fontWeight: '800',
   },
   rateValue: {
@@ -2946,7 +2890,7 @@ const styles = StyleSheet.create({
   },
   nextButtonContainer: {
     padding: 15,
-    marginTop:-30,
+    marginTop: -30,
     alignItems: 'center', // Align to right side
   },
   nextButton: {
