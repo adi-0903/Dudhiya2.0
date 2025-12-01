@@ -18,11 +18,10 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { getCurrentMarketPrice, getAllCustomers, getCustomers, createCollection, getCollections, getDairyInfo, updateDairyInfo } from '../services/api';
+import { getCurrentMarketPrice, getAllCustomers, getCustomers, createCollection, getCollections, getDairyInfo, updateDairyInfo, getProRataRateChart, upsertProRataRateChart } from '../services/api';
 import BottomNav from '../components/BottomNav';
 import { useTranslation } from 'react-i18next';
 import useKeyboardDismiss from '../hooks/useKeyboardDismiss';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS } from '../utils/dairySettings';
 
@@ -160,70 +159,60 @@ const ProRataCollectionScreen = ({ navigation }) => {
   };
 
   // Persist and load step rate inputs (Fat Stepup and SNF Stepdown)
-  useEffect(() => {
-    const loadStepRates = async () => {
-      try {
-        // Load threshold-based arrays first
-        const savedFatThresholds = await AsyncStorage.getItem('@fat_step_up_thresholds');
-        if (savedFatThresholds) {
-          setFatStepUpThresholds(JSON.parse(savedFatThresholds));
-        } else {
-          // Backward compatibility: migrate from old range format or single rate
-          const oldRanges = await AsyncStorage.getItem('@fat_step_up_ranges');
-          if (oldRanges) {
-            const ranges = JSON.parse(oldRanges);
-            // Convert ranges to thresholds (use 'from' values)
-            const thresholds = ranges.map(r => ({ threshold: r.from, rate: r.rate }));
-            setFatStepUpThresholds(thresholds);
-            await AsyncStorage.setItem('@fat_step_up_thresholds', JSON.stringify(thresholds));
-          } else {
-            // Legacy single rate migration or set default
-            const legacy = await AsyncStorage.getItem('@fat_step_up_rate');
-            if (legacy) {
-              const migrated = [{ threshold: '6.5', rate: legacy }];
-              setFatStepUpThresholds(migrated);
-              await AsyncStorage.setItem('@fat_step_up_thresholds', JSON.stringify(migrated));
-            } else {
-              // Set default fat threshold
-              const defaultFat = [{ threshold: '6.5', rate: '' }];
-              setFatStepUpThresholds(defaultFat);
-              await AsyncStorage.setItem('@fat_step_up_thresholds', JSON.stringify(defaultFat));
-            }
-            if (legacy !== null) setFatStepUpRate(legacy);
-          }
-        }
-      } catch (e) {}
+  const [rateChartId, setRateChartId] = useState(null);
+  const sortFatThresholds = (items = []) =>
+    [...items].sort((a, b) => {
+      if (a?.id && b?.id) {
+        return a.id - b.id;
+      }
+      const aStep = parseFloat(a?.threshold) || 0;
+      const bStep = parseFloat(b?.threshold) || 0;
+      return aStep - bStep;
+    });
 
-      try {
-        const savedSnfThresholds = await AsyncStorage.getItem('@snf_step_down_thresholds');
-        if (savedSnfThresholds) {
-          setSnfStepDownThresholds(JSON.parse(savedSnfThresholds));
-        } else {
-          // Backward compatibility for SNF
-          const oldRanges = await AsyncStorage.getItem('@snf_step_down_ranges');
-          if (oldRanges) {
-            const ranges = JSON.parse(oldRanges);
-            const thresholds = ranges.map(r => ({ threshold: r.from, rate: r.rate }));
-            setSnfStepDownThresholds(thresholds);
-            await AsyncStorage.setItem('@snf_step_down_thresholds', JSON.stringify(thresholds));
-          } else {
-            // Legacy single rate migration or set default
-            const legacy = await AsyncStorage.getItem('@snf_step_down_rate');
-            if (legacy) {
-              const migrated = [{ threshold: '8.5', rate: legacy }];
-              setSnfStepDownThresholds(migrated);
-              await AsyncStorage.setItem('@snf_step_down_thresholds', JSON.stringify(migrated));
-            } else {
-              // Set default SNF threshold
-              const defaultSnf = [{ threshold: '9.0', rate: '' }];
-              setSnfStepDownThresholds(defaultSnf);
-              await AsyncStorage.setItem('@snf_step_down_thresholds', JSON.stringify(defaultSnf));
-            }
-            if (legacy !== null) setSnfStepDownRate(legacy);
-          }
-        }
-      } catch (e) {}
-    };
+  const sortSnfThresholds = (items = []) =>
+    [...items].sort((a, b) => {
+      if (a?.id && b?.id) {
+        return a.id - b.id;
+      }
+      const aStep = parseFloat(a?.threshold) || 0;
+      const bStep = parseFloat(b?.threshold) || 0;
+      return aStep - bStep;
+    });
+
+  const loadStepRates = async () => {
+    try {
+      const response = await getProRataRateChart();
+      if (response?.id) {
+        setRateChartId(response.id);
+      }
+
+      const serverFatSteps = Array.isArray(response?.fat_step_up_rates)
+        ? response.fat_step_up_rates.map((item) => ({
+            threshold: String(item.step ?? ''),
+            rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+            id: item.id,
+          }))
+        : [{ threshold: '6.5', rate: '' }];
+
+      const serverSnfSteps = Array.isArray(response?.snf_step_down_rates)
+        ? response.snf_step_down_rates.map((item) => ({
+            threshold: String(item.step ?? ''),
+            rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+            id: item.id,
+          }))
+        : [{ threshold: '9.0', rate: '' }];
+
+      setFatStepUpThresholds(sortFatThresholds(serverFatSteps));
+      setSnfStepDownThresholds(sortSnfThresholds(serverSnfSteps));
+    } catch (e) {
+      console.error('Error loading pro-rata rate chart:', e);
+      setFatStepUpThresholds([{ threshold: '6.5', rate: '' }]);
+      setSnfStepDownThresholds([{ threshold: '9.0', rate: '' }]);
+    }
+  };
+
+  useEffect(() => {
     loadStepRates();
   }, []);
 
@@ -545,6 +534,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
   // Add useFocusEffect to fetch rate when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      loadStepRates();
       fetchCurrentRate();
       fetchCustomers();
       fetchLatestCollection();
@@ -797,25 +787,6 @@ const ProRataCollectionScreen = ({ navigation }) => {
     try {
       setFatSnfRatio(value);
       await persistDairySettings({ fat_snf_ratio: value }, { skipIfUnchanged: true });
-    } catch (e) {
-      // ignore persist errors silently
-    }
-  };
-
-  // Handlers to persist step rates
-  const handleFatStepUpRateChange = async (value) => {
-    try {
-      setFatStepUpRate(value);
-      await AsyncStorage.setItem('@fat_step_up_rate', value);
-    } catch (e) {
-      // ignore persist errors silently
-    }
-  };
-
-  const handleSnfStepDownRateChange = async (value) => {
-    try {
-      setSnfStepDownRate(value);
-      await AsyncStorage.setItem('@snf_step_down_rate', value);
     } catch (e) {
       // ignore persist errors silently
     }
@@ -2403,19 +2374,54 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={handleButtonPress(async () => {
                   try {
-                    // Persist new threshold step rates
-                    await persistDairySettings({ fat_step_up_thresholds: tempFatStepUpThresholds, snf_step_down_thresholds: tempSnfStepDownThresholds }, { skipIfUnchanged: true });
+                    const payload = {
+                      fat_step_up_rates: (tempFatStepUpThresholds || [])
+                        .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
+                        .map((item) => ({
+                          id: item.id,
+                          step: Number(item.threshold),
+                          rate: Number(item.rate),
+                        })),
+                      snf_step_down_rates: (tempSnfStepDownThresholds || [])
+                        .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
+                        .map((item) => ({
+                          id: item.id,
+                          step: Number(item.threshold),
+                          rate: -Math.abs(Number(item.rate)),
+                        })),
+                    };
 
-                    // Apply to live state
-                    setFatStepUpThresholds(tempFatStepUpThresholds || []);
-                    setSnfStepDownThresholds(tempSnfStepDownThresholds || []);
-                    // If preview is active, recalc immediately with new settings
+                    const result = await upsertProRataRateChart(rateChartId, payload);
+                    setRateChartId(result?.id || rateChartId);
+
+                    const updatedFat = Array.isArray(result?.fat_step_up_rates)
+                      ? result.fat_step_up_rates.map((item) => ({
+                          threshold: String(item.step ?? ''),
+                          rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                          id: item.id,
+                        }))
+                      : [];
+
+                    const updatedSnf = Array.isArray(result?.snf_step_down_rates)
+                      ? result.snf_step_down_rates.map((item) => ({
+                          threshold: String(item.step ?? ''),
+                          rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                          id: item.id,
+                        }))
+                      : [];
+
+                    setFatStepUpThresholds(sortFatThresholds(updatedFat));
+                    setSnfStepDownThresholds(sortSnfThresholds(updatedSnf));
+
                     recalculatePreviewWithSettings(
-                      fatSnfRatio, // Use existing ratio value
-                      tempFatStepUpThresholds || [],
-                      tempSnfStepDownThresholds || []
+                      fatSnfRatio,
+                      updatedFat,
+                      updatedSnf
                     );
-                  } catch (e) {}
+                  } catch (e) {
+                    console.error('Error saving pro-rata rate chart:', e);
+                    Alert.alert(t('error'), t('failed to save rate chart. please try again.'));
+                  }
                   setShowRateChartModal(false);
                 })}
               >
@@ -3356,19 +3362,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   measureInput: {
-    flex: 0,  // Set flex to 0 to allow width to be defined
-    width: 75,  // Set width to 75 for all input boxes
+    flex: 0,
+    width: 75,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
     height: 36,
-    color: '#000000',  // Adding explicit black color
+    color: '#000000',
   },
   rateInputWithIndicator: {
     flexDirection: 'row',
@@ -3377,28 +3383,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    paddingHorizontal: 8,
+    overflow: 'hidden',
     height: 36,
   },
   rateInputIndicator: {
-    fontSize: 18,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: '#FFE0E0',
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#B00020',
-    marginRight: 4,
+    color: '#D32F2F',
+    minWidth: 30,
+    textAlign: 'center',
   },
   positiveRateInput: {
-    borderColor: '#0D47A1',
+    borderColor: '#4CAF50',
   },
   rateInputIndicatorPositive: {
-    color: '#0D47A1',
+    backgroundColor: '#E8F5E9',
+    color: '#4CAF50',
   },
   rateModalIndicatorInput: {
     flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     fontSize: 16,
     fontWeight: '800',
-    color: '#000000',
-    paddingVertical: 6,
     textAlign: 'center',
+    color: '#000000',
   },
   inputError: {
     borderColor: '#FF4444',

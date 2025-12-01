@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 //const BASE_URL = "http://dudhiya-backend-v104-mod-zpskdt-829829-31-97-60-222.traefik.me/api";
 
 // TEST
-const BASE_URL = "http://dudhiya-backend-yabopd-2b0695-31-97-60-222.traefik.me/api"; //"https://4d65d50ca56d.ngrok-free.app/api"; //"http://dudhiya-backend-yabopd-2b0695-31-97-60-222.traefik.me/api";
+const BASE_URL = "http://dudhiya-backend-yabopd-2b0695-31-97-60-222.traefik.me/api";
 
 // API Endpoints
 const ENDPOINTS = {
@@ -43,6 +43,7 @@ const ENDPOINTS = {
   PRO_RATA_PURCHASE_REPORT_COLLECTIONS: '/collector/pro-rata-reports/purchase-report/',
   PRO_RATA_PURCHASE_SUMMARY_REPORT: '/collector/pro-rata-reports/purchase-summary-report/',
   PRO_RATA_PURCHASE_SUMMARY_DATA: '/collector/pro-rata-reports/purchase-summary-data/',
+  PRO_RATA_RATE_CHART: '/collector/pro-rata-rate-chart/',
 
   // Wallet endpoints
   WALLET: '/wallet/',
@@ -334,6 +335,32 @@ export const updateRateChart = async (data) => {
     const response = await api.post(ENDPOINTS.MARKET_PRICES, {
       price: data.currentRate
     });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Pro Rata Rate Chart endpoints
+export const getProRataRateChart = async () => {
+  try {
+    const response = await api.get(ENDPOINTS.PRO_RATA_RATE_CHART);
+    return response.data;
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+};
+
+export const upsertProRataRateChart = async (chartId, payload) => {
+  try {
+    if (chartId) {
+      const response = await api.put(`${ENDPOINTS.PRO_RATA_RATE_CHART}${chartId}/`, payload);
+      return response.data;
+    }
+    const response = await api.post(ENDPOINTS.PRO_RATA_RATE_CHART, payload);
     return response.data;
   } catch (error) {
     throw error;
