@@ -146,6 +146,8 @@ const CollectionScreen = ({ navigation }) => {
     return acc;
   }, {});
 
+  const isFlatRateType = (rateType) => rateType === 'kg_only' || rateType === 'liters_only';
+
   const getRadiosForRateType = (rateType) => {
     if (rateType === 'fat_snf') {
       return { snf: true, clr: false };
@@ -436,18 +438,24 @@ const CollectionScreen = ({ navigation }) => {
 
   const validateInputs = () => {
     const newErrors = {};
+    const flatRate = isFlatRateType(tempRateType);
+
     if (!selectedCustomer) newErrors.customer = 'Please select a customer';
     if (!selectedTime) newErrors.time = 'Please select morning or evening';
     if (!weight) newErrors.weight = 'Required';
-    if (!fatPercent) newErrors.fatPercent = 'Required';
-    if (selectedRadios.snf && !snfPercent) newErrors.snfPercent = 'Required';
-    if (selectedRadios.clr && !clr) newErrors.clr = 'Required';
-    if (!selectedRadios.snf && !selectedRadios.clr) newErrors.radio = 'At least one option must be selected';
+    if (!flatRate) {
+      if (!fatPercent) newErrors.fatPercent = 'Required';
+      if (selectedRadios.snf && !snfPercent) newErrors.snfPercent = 'Required';
+      if (selectedRadios.clr && !clr) newErrors.clr = 'Required';
+      if (!selectedRadios.snf && !selectedRadios.clr) newErrors.radio = 'At least one option must be selected';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSave = async () => {
+    const flatRate = isFlatRateType(tempRateType);
+
     if (!selectedCustomer) {
       Alert.alert(
         t('customer required'),
@@ -457,24 +465,95 @@ const CollectionScreen = ({ navigation }) => {
       return;
     }
 
-    if (!selectedRadios.snf && !selectedRadios.clr) {
+    if (!flatRate && !selectedRadios.snf && !selectedRadios.clr) {
       setErrors({ ...errors, radio: 'Please select SNF% or CLR' });
       return;
     }
 
     if (validateInputs()) {
       try {
-        // Convert all numeric inputs to floats
-        const weightKg = parseFloat(weight);
-        const fatPercentage = parseFloat(fatPercent);
         const milkRate = parseFloat(currentRate);
         const baseSnfPercentage = parseFloat(snf);
 
-        // Calculate liters from kg (assuming 1.03 density factor)
-        const liters = (weightKg / 1.02249).toFixed(2);
+        // Format milk type
+        const milkType = selectedAnimal.toLowerCase().replace(/\s+/g, '');
+        const formattedMilkType = milkType === 'cow+buffalo' ? 'cow_buffalo' : milkType;
+
+        // Flat rate types: kg_only and liters_only
+        if (tempRateType === 'kg_only') {
+          const weightKg = parseFloat(weight);
+          const liters = (weightKg / 1.02).toFixed(2);
+          const amount = (weightKg * milkRate).toFixed(3);
+          const solidWeight = (amount / milkRate).toFixed(3);
+
+          const collectionData = {
+            collection_time: selectedTime.toLowerCase(),
+            milk_type: formattedMilkType,
+            customer: selectedCustomer.id,
+            collection_date: new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0],
+            measured: 'kg',
+            liters: liters.toString(),
+            kg: weightKg.toString(),
+            fat_percentage: '0',
+            fat_kg: '0',
+            clr: '',
+            snf_percentage: '0',
+            snf_kg: '0',
+            fat_rate: '0',
+            snf_rate: '0',
+            milk_rate: milkRate.toString(),
+            amount: amount.toString(),
+            solid_weight: solidWeight.toString(),
+            base_snf_percentage: baseSnfPercentage.toString()
+          };
+
+          setPreviewData(collectionData);
+          setShowPreviewModal(true);
+          return;
+        }
+
+        if (tempRateType === 'liters_only') {
+          const liters = parseFloat(weight);
+          const rawKg = liters * 1.02;
+          const weightKg = parseFloat(rawKg.toFixed(2));
+          const amount = (weightKg * milkRate).toFixed(3);
+          const solidWeight = (amount / milkRate).toFixed(3);
+
+          const collectionData = {
+            collection_time: selectedTime.toLowerCase(),
+            milk_type: formattedMilkType,
+            customer: selectedCustomer.id,
+            collection_date: new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0],
+            measured: 'liters',
+            liters: liters.toString(),
+            kg: weightKg.toFixed(2).toString(),
+            fat_percentage: '0',
+            fat_kg: '0',
+            clr: '',
+            snf_percentage: '0',
+            snf_kg: '0',
+            fat_rate: '0',
+            snf_rate: '0',
+            milk_rate: milkRate.toString(),
+            amount: amount.toString(),
+            solid_weight: solidWeight.toString(),
+            base_snf_percentage: baseSnfPercentage.toString()
+          };
+
+          setPreviewData(collectionData);
+          setShowPreviewModal(true);
+          return;
+        }
+
+        // Convert all numeric inputs to floats (fat/SNF-based types)
+        const weightKg = parseFloat(weight);
+        const fatPercentage = parseFloat(fatPercent);
+
+        // Calculate liters from kg (using 1.02 density factor)
+        const liters = (weightKg / 1.02).toFixed(2);
 
         // Calculate fat kg - Remove slice limitation
-        const fatKg = Math.floor((weightKg * (fatPercentage / 100)) * 100) / 100; //String(weightKg * (fatPercentage / 100)).slice(0, (String(weightKg * (fatPercentage / 100)).indexOf('.')) + 3);        
+        const fatKg = Math.floor((weightKg * (fatPercentage / 100)) * 100) / 100;
 
         // Handle CLR and SNF calculations
         let snfPercentageValue, clrValue;
@@ -487,7 +566,7 @@ const CollectionScreen = ({ navigation }) => {
         }
 
         // Calculate SNF kg - Remove slice limitation
-        const snfKg = Math.floor((weightKg * (snfPercentageValue / 100)) * 100) / 100;  //String(weightKg * (snfPercentageValue / 100)).slice(0, (String(weightKg * (snfPercentageValue / 100)).indexOf('.')) + 3);
+        const snfKg = Math.floor((weightKg * (snfPercentageValue / 100)) * 100) / 100;
 
         // Calculate rates based on selected Fat/SNF ratio
         const fatRatioPercent = fatSnfRatio === '60_40' ? 60 : 52;
@@ -504,10 +583,6 @@ const CollectionScreen = ({ navigation }) => {
         // Calculate solid weight - No limitation
         const solidWeight = (amount / milkRate).toFixed(3);
 
-        // Format milk type
-        const milkType = selectedAnimal.toLowerCase().replace(/\s+/g, '');
-        const formattedMilkType = milkType === 'cow+buffalo' ? 'cow_buffalo' : milkType;
-
         // Prepare collection data
         const collectionData = {
           collection_time: selectedTime.toLowerCase(),
@@ -519,7 +594,7 @@ const CollectionScreen = ({ navigation }) => {
           kg: weightKg.toString(),
           fat_percentage: fatPercentage.toString(),
           fat_kg: fatKg.toString(),
-          clr: selectedRadios.clr ? clrValue.toString() : '' | "",  // Only include CLR if CLR radio is selected
+          clr: selectedRadios.clr ? clrValue.toString() : '' | "",
           snf_percentage: snfPercentageValue.toString(),
           snf_kg: snfKg.toString(),
           fat_rate: fatRate.toString(),
@@ -692,6 +767,13 @@ const CollectionScreen = ({ navigation }) => {
 
   console.log('Current Rate:', currentRate); // Debugging log
 
+  const isFlatRateMode = isFlatRateType(tempRateType);
+  const isKgOnlyMode = tempRateType === 'kg_only';
+  const isLitersOnlyMode = tempRateType === 'liters_only';
+  const isNextDisabled = isFlatRateMode
+    ? !weight
+    : (!weight || !fatPercent || !snfPercent);
+
   // Add this component for the preview table
   const PreviewTable = ({ navigation }) => {
     if (!latestCollection) return null;
@@ -703,6 +785,17 @@ const CollectionScreen = ({ navigation }) => {
     });
 
     const timeDisplay = latestCollection.collection_time === 'morning' ? 'Morning' : 'Evening';
+
+    const fatPct = parseFloat(latestCollection.fat_percentage);
+    const snfPct = parseFloat(latestCollection.snf_percentage);
+    const baseSnfPct = parseFloat(latestCollection.base_snf_percentage);
+    const clrValue =
+      latestCollection.clr !== null && latestCollection.clr !== undefined
+        ? parseFloat(latestCollection.clr)
+        : NaN;
+
+    const displayOrDash = (value) =>
+      !isNaN(value) && value > 0 ? value.toFixed(1) : '-';
 
     return (
       <View>
@@ -716,7 +809,7 @@ const CollectionScreen = ({ navigation }) => {
               <Text style={styles.headerText}>Name</Text>
             </View>
             <View style={[styles.cell, styles.headerCell, { flex: 0.8 }]}>
-              <Text style={styles.headerText}>KG</Text>
+              <Text style={styles.headerText}>{isLitersOnlyMode ? 'Liters' : 'KG'}</Text>
             </View>
             <View style={[styles.cell, styles.headerCell, { flex: 1 }]}>
               <Text style={styles.headerText}>Fat%</Text>
@@ -752,19 +845,27 @@ const CollectionScreen = ({ navigation }) => {
               </Text>
             </View>
             <View style={[styles.cell, { flex: 0.8 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.kg).toFixed(2)}</Text>
+              <Text style={styles.cellText}>
+                {isLitersOnlyMode
+                  ? (latestCollection.liters != null
+                      ? parseFloat(latestCollection.liters).toFixed(2)
+                      : '-')
+                  : (latestCollection.kg != null
+                      ? parseFloat(latestCollection.kg).toFixed(2)
+                      : '-')}
+              </Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.fat_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{displayOrDash(fatPct)}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.snf_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{displayOrDash(snfPct)}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.base_snf_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{displayOrDash(baseSnfPct)}</Text>
             </View>
             <View style={[styles.cell, { flex: 1.2 }]}>
-              <Text style={styles.cellText}>{latestCollection.clr ? parseFloat(latestCollection.clr).toFixed(1) : '-'}</Text>
+              <Text style={styles.cellText}>{!isNaN(clrValue) && clrValue > 0 ? clrValue.toFixed(1) : '-'}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -1141,7 +1242,7 @@ const CollectionScreen = ({ navigation }) => {
               <View style={styles.inputGroup}>
                 <View style={styles.labelWithRadio}>
                   <View style={{ width: 20 }} />
-                  <Text style={styles.inputLabel}>Weight</Text>
+                  <Text style={styles.inputLabel}>{isLitersOnlyMode ? 'Liters' : 'Weight'}</Text>
                 </View>
                 <TextInput
                   style={[
@@ -1183,13 +1284,15 @@ const CollectionScreen = ({ navigation }) => {
                   style={[
                     styles.measureInput,
                     errors.fatPercent && styles.inputError,
-                    { textAlign: (isFatFocused || !!fatPercent) ? 'left' : 'center' }
+                    { textAlign: (isFatFocused || !!fatPercent) ? 'left' : 'center' },
+                    isFlatRateMode && styles.disabledInput
                   ]}
                   onFocus={() => setIsFatFocused(true)}
                   onBlur={() => setIsFatFocused(false)}
                   value={fatPercent}
                   onChangeText={handleFatPercentInput}
                   keyboardType="decimal-pad"
+                  editable={!isFlatRateMode}
                   placeholder="0.0"
                   placeholderTextColor="#B0B0B0"
                 />
@@ -1273,10 +1376,10 @@ const CollectionScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.nextButton,
-                (!weight || !fatPercent || !snfPercent) && styles.nextButtonDisabled
+                isNextDisabled && styles.nextButtonDisabled
               ]}
               onPress={handleButtonPress(handleSave)}
-              disabled={!weight || !fatPercent || !snfPercent}
+              disabled={isNextDisabled}
             >
               <Text style={styles.nextButtonText}>{t('next')}</Text>
               <Icon name="arrow-right" size={20} color="#fff" />

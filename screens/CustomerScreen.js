@@ -13,10 +13,11 @@ import {
   Platform
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { getAllCustomers, getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../services/api';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { getAllCustomers, getCustomers, createCustomer, updateCustomer, deleteCustomer, getDairyInfo } from '../services/api';
 import BottomNav from '../components/BottomNav';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const CustomerScreen = () => {
@@ -38,6 +39,7 @@ const CustomerScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const { t, i18n } = useTranslation();
+  const [dairyInfo, setDairyInfo] = useState(null);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -57,6 +59,32 @@ const CustomerScreen = () => {
   useEffect(() => {
     fetchCustomers();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+
+      const fetchDairy = async () => {
+        try {
+          const info = await getDairyInfo();
+          if (info && isActive) {
+            setDairyInfo(info);
+          }
+        } catch (error) {
+          // silently ignore dairy info errors here
+        }
+      };
+
+      fetchDairy();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
+
+  const isFlatRateType =
+    dairyInfo?.rate_type === 'kg_only' || dairyInfo?.rate_type === 'liters_only';
 
   const fetchCustomers = async () => {
     try {
@@ -547,8 +575,16 @@ const CustomerScreen = () => {
                   </View>
 
                   <TouchableOpacity 
-                    style={[styles.actionButton, styles.reportButton, styles.fullWidthButton]}
+                    style={[
+                      styles.actionButton,
+                      styles.reportButton,
+                      styles.fullWidthButton,
+                      isFlatRateType && { opacity: 0.4 }
+                    ]}
                     onPress={() => {
+                      if (isFlatRateType) {
+                        return;
+                      }
                       setShowDetailsModal(false);
                       navigation.navigate('CustomerProRataReportScreen', { 
                         customerName: selectedCustomer.name,
@@ -556,7 +592,7 @@ const CustomerScreen = () => {
                         customer_id: selectedCustomer.customer_id
                       });
                     }}
-                    disabled={isUpdateLoading}
+                    disabled={isUpdateLoading || isFlatRateType}
                   >
                     <Icon name="file-chart-outline" size={20} color="#fff" />
                     <Text style={styles.actionButtonText}>{t('View Pro-Rata Report')}</Text>

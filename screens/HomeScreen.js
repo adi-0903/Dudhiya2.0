@@ -43,6 +43,9 @@ const HomeScreen = () => {
   const howToVideoRef = useRef(null);
   const [showHowToModal, setShowHowToModal] = useState(false);
 
+  const isFlatRateType =
+    dairyInfo?.rate_type === 'kg_only' || dairyInfo?.rate_type === 'liters_only';
+
   const menuItems = [
     {
       name: t('supplier'),
@@ -555,8 +558,17 @@ const HomeScreen = () => {
             {menuItems[4] && (
               <View style={styles.menuRow}>
                 <TouchableOpacity 
-                  style={[styles.menuBox, !menuItems[4].subtitle && styles.menuBoxCompact]}
-                  onPress={() => navigation.navigate(menuItems[4].screen)}
+                  style={[
+                    styles.menuBox,
+                    !menuItems[4].subtitle && styles.menuBoxCompact,
+                    isFlatRateType && { opacity: 0.4 }
+                  ]}
+                  disabled={isFlatRateType}
+                  onPress={() => {
+                    if (!isFlatRateType) {
+                      navigation.navigate(menuItems[4].screen);
+                    }
+                  }}
                 >
                   <View style={[styles.iconBox, !menuItems[4].subtitle && styles.iconBoxCompact]}>
                     <Icon name={menuItems[4].icon} size={24} color="#0D47A1" />
@@ -568,8 +580,17 @@ const HomeScreen = () => {
                 </TouchableOpacity>
                 {menuItems[5] ? (
                   <TouchableOpacity 
-                    style={[styles.menuBox, !menuItems[5].subtitle && styles.menuBoxCompact]}
-                    onPress={() => navigation.navigate(menuItems[5].screen)}
+                    style={[
+                      styles.menuBox,
+                      !menuItems[5].subtitle && styles.menuBoxCompact,
+                      isFlatRateType && { opacity: 0.4 }
+                    ]}
+                    disabled={isFlatRateType}
+                    onPress={() => {
+                      if (!isFlatRateType) {
+                        navigation.navigate(menuItems[5].screen);
+                      }
+                    }}
                   >
                     <View style={[styles.iconBox, !menuItems[5].subtitle && styles.iconBoxCompact]}>
                       <Icon name={menuItems[5].icon} size={24} color="#0D47A1" />

@@ -2958,6 +2958,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.changeRatesSaveButton}
                 onPress={async () => {
+                  const previousRateType = dairyDetails?.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
                   const overrides = {
                     base_snf: tempBaseSnf,
                     clr_conversion_factor: tempClrConversionFactor,
@@ -2965,9 +2966,14 @@ const ProRataCollectionScreen = ({ navigation }) => {
                     rate_type: tempRateType
                   };
 
-                  await persistDairySettings(overrides, { skipIfUnchanged: true });
+                  const updated = await persistDairySettings(overrides, { skipIfUnchanged: true });
                   setSelectedRadios(getRadiosForRateType(tempRateType));
                   setShowChangeRatesModal(false);
+
+                  const newRateType = updated?.rate_type || tempRateType;
+                  if (previousRateType !== newRateType) {
+                    navigation.navigate('Home');
+                  }
                 }}
               >
                 <Text style={styles.changeRatesSaveText}>{t('save')}</Text>
