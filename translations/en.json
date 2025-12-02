@@ -450,6 +450,9 @@
     "fat step order error": "Fat steps must be in ascending order.\n\nYou entered: {value}%\nMust be greater than: {existing}%\n\nTry entering a value higher than {existing}%",
     "snf step order error": "SNF steps must be in descending order.\n\nYou entered: {value}%\nMust be less than: {existing}%\n\nTry entering a value lower than {existing}%",
     "ok": "OK",
+    "fat limit error": "Fat% value must be smaller than 15.0",
+    "snf limit error": "SNF% value must be smaller than 15.0",
+    "clr limit error": "CLR value must be smaller than 36.00",
     
     "offers": "Offers",
     "recharge offers": "Recharge Offers",

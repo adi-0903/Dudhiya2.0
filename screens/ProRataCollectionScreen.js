@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -108,6 +108,21 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const [isClrFocused, setIsClrFocused] = useState(false);
   const [isFatStepUpFocused, setIsFatStepUpFocused] = useState(false);
   const [isSnfStepDownFocused, setIsSnfStepDownFocused] = useState(false);
+
+  const [showInputLimitPopup, setShowInputLimitPopup] = useState(false);
+  const [inputLimitMessage, setInputLimitMessage] = useState('');
+
+  const fatFormatTimeoutRef = useRef(null);
+  const snfFormatTimeoutRef = useRef(null);
+  const clrFormatTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+      if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+      if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+    };
+  }, []);
 
   // Rate Chart modal and thresholds (Pro-Rata gating UI)
   const [showRateChartModal, setShowRateChartModal] = useState(false);
@@ -645,110 +660,116 @@ const ProRataCollectionScreen = ({ navigation }) => {
     } finally {
       setIsLoadingCustomers(false);
     }
+  }
+
+  const triggerInputLimitPopup = (translationKey) => {
+    setInputLimitMessage(t(translationKey));
+    setShowInputLimitPopup(true);
   };
 
-  const handleSnfChange = (text) => {
-    if (text === '' || allowedSnfValues.includes(text)) {
-      setSnf(text);
-      setSnfError('');
-    } else {
-      setSnfError('Please select a valid SNF value');
+  const formatWithTrailingDecimal = (rawValue, maxValue, decimals, onOverflow) => {
+    if (!rawValue) return '';
+
+    const sanitized = (rawValue || '').replace(/[^0-9.]/g, '');
+
+    if (sanitized.includes('.')) {
+      const num = parseFloat(sanitized);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return num.toFixed(decimals);
     }
+
+    const digits = sanitized.replace(/\D/g, '');
+    if (!digits) return '';
+
+    if (digits.length === 1) {
+      const num = parseFloat(digits);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return num.toFixed(decimals);
+    }
+
+    const intPart = digits.slice(0, digits.length - 1);
+    const fracPart = digits.slice(-1);
+    let num = parseFloat(`${intPart}.${fracPart}`);
+    if (isNaN(num)) return '';
+    if (num > maxValue) {
+      if (onOverflow) onOverflow();
+      return '';
+    }
+    return num.toFixed(decimals);
   };
 
-  // Custom input handler for Fat % (pro-rata)
+  const scheduleFatFormatting = () => {
+    if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+    fatFormatTimeoutRef.current = setTimeout(() => {
+      setFatPercent((current) =>
+        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('fat limit error'))
+      );
+    }, 2000);
+  };
+
+  const scheduleSnfFormatting = () => {
+    if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+    snfFormatTimeoutRef.current = setTimeout(() => {
+      setSnfPercent((current) =>
+        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('snf limit error'))
+      );
+    }, 2000);
+  };
+
+  const scheduleClrFormatting = () => {
+    if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+    clrFormatTimeoutRef.current = setTimeout(() => {
+      setClr((current) =>
+        formatWithTrailingDecimal(current, 36.0, 2, () => triggerInputLimitPopup('clr limit error'))
+      );
+    }, 2000);
+  };
+
   const handleFatPercentInput = (text) => {
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
     if (raw === '') {
+      if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
       setFatPercent('');
       return;
     }
 
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0];
-      const rightAll = parts.slice(1).join('');
-      const right = rightAll.slice(0, 2);
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-
-      const num = parseFloat(value);
-      if (!isNaN(num) && num <= 15.9) {
-        setFatPercent(value);
-      }
-      return;
-    }
-
-    // No decimal: allow direct input without auto-formatting
-    const value = raw.slice(0, 4); // allow up to 4 digits (e.g., 15.9)
-    const num = parseFloat(value);
-    if (!isNaN(num) && num <= 15.9) {
-      setFatPercent(value);
-    }
+    setFatPercent(raw);
+    scheduleFatFormatting();
   };
 
-  // Custom input handler for SNF % (mirrors Fat % behavior)
   const handleSnfPercentInput = (text) => {
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
     if (raw === '') {
+      if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
       setSnfPercent('');
       return;
     }
 
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0];
-      const rightAll = parts.slice(1).join('');
-      const right = rightAll.slice(0, 2);
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-
-      const num = parseFloat(value);
-      if (!isNaN(num) && num <= 15.9) {
-        setSnfPercent(value);
-      }
-      return;
-    }
-
-    // No decimal: allow direct input without auto-formatting
-    const value = raw.slice(0, 4); // allow up to 4 digits (e.g., 15.9)
-    const num = parseFloat(value);
-    if (!isNaN(num) && num <= 15.9) {
-      setSnfPercent(value);
-    }
+    setSnfPercent(raw);
+    scheduleSnfFormatting();
   };
 
-  // Custom input handler for CLR (decimal after 2 digits)
   const handleClrInput = (text) => {
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
     if (raw === '') {
+      if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
       setClr('');
       return;
     }
 
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0].slice(0, 2);
-      const rightAll = parts.slice(1).join('');
-      const right = rightAll.slice(0, 2);
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-      setClr(value);
-      return;
-    }
-
-    const digits = raw.replace(/\D/g, '').slice(0, 4);
-
-    if (digits.length <= 2) {
-      setClr(digits);
-      return;
-    }
-
-    const left = digits.slice(0, 2);
-    const right = digits.slice(2, 4);
-    const paddedRight = right.length === 1 && right === '0' ? '00' : right;
-    const value = paddedRight.length > 0 ? `${left}.${paddedRight}` : `${left}.`;
-    setClr(value);
+    setClr(raw);
+    scheduleClrFormatting();
   };
 
   const handleClrRadioPress = () => {
@@ -898,7 +919,20 @@ const ProRataCollectionScreen = ({ navigation }) => {
       try {
         // Convert all numeric inputs to floats
         const weightKg = parseFloat(weight);
-        const fatPercentage = parseFloat(fatPercent);
+
+        const formattedFat = formatWithTrailingDecimal(
+          fatPercent,
+          15.0,
+          1,
+          () => triggerInputLimitPopup('fat limit error')
+        );
+        if (!formattedFat) {
+          setFatPercent('');
+          return;
+        }
+        const fatPercentage = parseFloat(formattedFat);
+        setFatPercent(formattedFat);
+
         const milkRate = parseFloat(currentRate);
         const baseSnfPercentage = parseFloat(snf);
 
@@ -912,7 +946,17 @@ const ProRataCollectionScreen = ({ navigation }) => {
         let clrValue = '';
 
         if (selectedRadios.clr) {
-          const snfFromClr = calculateSnfFromClr(clr, fatPercentage);
+          const formattedClr = formatWithTrailingDecimal(
+            clr,
+            36.0,
+            2,
+            () => triggerInputLimitPopup('clr limit error')
+          );
+          if (!formattedClr) {
+            setClr('');
+            return;
+          }
+          const snfFromClr = calculateSnfFromClr(formattedClr, formattedFat);
           if (snfFromClr === '') {
             Alert.alert(
               t('invalid input'),
@@ -921,17 +965,22 @@ const ProRataCollectionScreen = ({ navigation }) => {
             return;
           }
           snfPercentageValue = parseFloat(snfFromClr);
-          const parsedClr = parseFloat(clr);
+          const parsedClr = parseFloat(formattedClr);
           clrValue = !isNaN(parsedClr) ? parsedClr.toFixed(2) : '';
+          setClr(formattedClr);
         } else {
-          snfPercentageValue = parseFloat(snfPercent);
-          if (isNaN(snfPercentageValue)) {
-            Alert.alert(
-              t('invalid input'),
-              t('please enter a valid snf percentage.')
-            );
+          const formattedSnf = formatWithTrailingDecimal(
+            snfPercent,
+            15.0,
+            1,
+            () => triggerInputLimitPopup('snf limit error')
+          );
+          if (!formattedSnf) {
+            setSnfPercent('');
             return;
           }
+          snfPercentageValue = parseFloat(formattedSnf);
+          setSnfPercent(formattedSnf);
           clrValue = '';
         }
 
@@ -1539,6 +1588,24 @@ const ProRataCollectionScreen = ({ navigation }) => {
         </View>
       )}
 
+      {showInputLimitPopup && (
+        <View style={styles.popupCardOverlay}>
+          <View style={styles.popupCard}>
+            <View style={styles.popupIconContainer}>
+              <Icon name="alert-circle-outline" style={styles.iconStyle} />
+            </View>
+            <Text style={styles.popupTitle}>{t('invalid input')}</Text>
+            <Text style={styles.popupText}>{inputLimitMessage}</Text>
+            <TouchableOpacity
+              style={styles.addRateButton}
+              onPress={() => setShowInputLimitPopup(false)}
+            >
+              <Text style={styles.addRateButtonText}>{t('ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Main Content */}
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingContainer}
@@ -1734,7 +1801,18 @@ const ProRataCollectionScreen = ({ navigation }) => {
                   { textAlign: (isFatFocused || !!fatPercent) ? 'left' : 'center' }
                 ]}
                 onFocus={() => setIsFatFocused(true)}
-                onBlur={() => setIsFatFocused(false)}
+                onBlur={() => {
+                  setIsFatFocused(false);
+                  if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+                  setFatPercent((current) =>
+                    formatWithTrailingDecimal(
+                      current,
+                      15.0,
+                      1,
+                      () => triggerInputLimitPopup('fat limit error')
+                    )
+                  );
+                }}
                 value={fatPercent}
                 onChangeText={handleFatPercentInput}
                 keyboardType="decimal-pad"
@@ -1763,7 +1841,18 @@ const ProRataCollectionScreen = ({ navigation }) => {
                   !selectedRadios.snf && styles.disabledInput
                 ]}
                 onFocus={() => setIsSnfFocused(true)}
-                onBlur={() => setIsSnfFocused(false)}
+                onBlur={() => {
+                  setIsSnfFocused(false);
+                  if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+                  setSnfPercent((current) =>
+                    formatWithTrailingDecimal(
+                      current,
+                      15.0,
+                      1,
+                      () => triggerInputLimitPopup('snf limit error')
+                    )
+                  );
+                }}
                 value={snfPercent?.toString() || ''}
                 onChangeText={handleSnfPercentInput}
                 placeholder="0.0"
@@ -1790,7 +1879,18 @@ const ProRataCollectionScreen = ({ navigation }) => {
                   !selectedRadios.clr && styles.disabledInput
                 ]}
                 onFocus={() => setIsClrFocused(true)}
-                onBlur={() => setIsClrFocused(false)}
+                onBlur={() => {
+                  setIsClrFocused(false);
+                  if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+                  setClr((current) =>
+                    formatWithTrailingDecimal(
+                      current,
+                      36.0,
+                      2,
+                      () => triggerInputLimitPopup('clr limit error')
+                    )
+                  );
+                }}
                 value={clr}
                 onChangeText={handleClrInput}
                 placeholder="0.00"
@@ -2971,7 +3071,10 @@ const ProRataCollectionScreen = ({ navigation }) => {
                   setShowChangeRatesModal(false);
 
                   const newRateType = updated?.rate_type || tempRateType;
-                  if (previousRateType !== newRateType) {
+                  if (
+                    previousRateType !== newRateType &&
+                    (newRateType === 'kg_only' || newRateType === 'liters_only')
+                  ) {
                     navigation.navigate('Home');
                   }
                 }}

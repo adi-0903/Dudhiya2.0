@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -73,6 +73,8 @@ const CollectionScreen = ({ navigation }) => {
     time: ''
   });
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
+  const [showInputLimitPopup, setShowInputLimitPopup] = useState(false);
+  const [inputLimitMessage, setInputLimitMessage] = useState('');
   const { handleButtonPress } = useKeyboardDismiss();
   // Confirmation modal state for Base SNF toggle
   const [showBaseSnfConfirm, setShowBaseSnfConfirm] = useState(false);
@@ -96,6 +98,20 @@ const CollectionScreen = ({ navigation }) => {
   const [isWeightFocused, setIsWeightFocused] = useState(false);
   const [isSnfFocused, setIsSnfFocused] = useState(false);
   const [isClrFocused, setIsClrFocused] = useState(false);
+
+  // Timers for delayed formatting of percentage inputs
+  const fatFormatTimeoutRef = useRef(null);
+  const snfFormatTimeoutRef = useRef(null);
+  const clrFormatTimeoutRef = useRef(null);
+
+  // Helper to clear all formatting timers on unmount
+  useEffect(() => {
+    return () => {
+      if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+      if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+      if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+    };
+  }, []);
 
   // CLR to SNF conversion factor state (0.14 or 0.50)
   const [clrConversionFactor, setClrConversionFactor] = useState(DEFAULT_DAIRY_SETTINGS.clrConversionFactor);
@@ -275,110 +291,121 @@ const CollectionScreen = ({ navigation }) => {
     }
   };
 
-  // Custom input handler for Fat %
+  const triggerInputLimitPopup = (translationKey) => {
+    setInputLimitMessage(t(translationKey));
+    setShowInputLimitPopup(true);
+  };
+
+  // Helper to format a numeric string as X.Y or X.YY using the last digit as decimal
+  const formatWithTrailingDecimal = (rawValue, maxValue, decimals, onOverflow) => {
+    if (!rawValue) return '';
+
+    const sanitized = (rawValue || '').replace(/[^0-9.]/g, '');
+
+    // If user already entered a decimal point, normalize and clamp
+    if (sanitized.includes('.')) {
+      const num = parseFloat(sanitized);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return num.toFixed(decimals);
+    }
+
+    const digits = sanitized.replace(/\D/g, '');
+    if (!digits) return '';
+
+    // Single digit -> D.0 / D.00
+    if (digits.length === 1) {
+      const num = parseFloat(digits);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return num.toFixed(decimals);
+    }
+
+    // Use last digit as decimal place: 70 -> 7.0, 235 -> 23.5, 120 -> 12.0
+    const intPart = digits.slice(0, digits.length - 1);
+    const fracPart = digits.slice(-1);
+    let num = parseFloat(`${intPart}.${fracPart}`);
+    if (isNaN(num)) return '';
+    if (num > maxValue) {
+      if (onOverflow) onOverflow();
+      return '';
+    }
+    return num.toFixed(decimals);
+  };
+
+  const scheduleFatFormatting = () => {
+    if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+    fatFormatTimeoutRef.current = setTimeout(() => {
+      setFatPercent((current) =>
+        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('fat limit error'))
+      );
+    }, 2000);
+  };
+
+  const scheduleSnfFormatting = () => {
+    if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+    snfFormatTimeoutRef.current = setTimeout(() => {
+      setSnfPercent((current) =>
+        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('snf limit error'))
+      );
+    }, 2000);
+  };
+
+  const scheduleClrFormatting = () => {
+    if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+    clrFormatTimeoutRef.current = setTimeout(() => {
+      setClr((current) =>
+        formatWithTrailingDecimal(current, 36.0, 2, () => triggerInputLimitPopup('clr limit error'))
+      );
+    }, 2000);
+  };
+
+  // Custom input handler for Fat % (auto-format on blur or 2s idle)
   const handleFatPercentInput = (text) => {
-    // Allow only digits and a decimal point
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
-    // Empty input
     if (raw === '') {
+      if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
       setFatPercent('');
       return;
     }
 
-    // If contains decimal point, honor as-is (limit to 1 dot and 2 decimals)
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0];
-      const rightAll = parts.slice(1).join(''); // collapse any extra dots
-      const right = rightAll.slice(0, 2); // limit to 2 decimals
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-
-      const num = parseFloat(value);
-      if (!isNaN(num) && num <= 15.9) {
-        setFatPercent(value);
-      }
-      return;
-    }
-
-    // No decimal: allow direct input without auto-formatting
-    const value = raw.slice(0, 4); // allow up to 4 digits (e.g., 15.9)
-    const num = parseFloat(value);
-    if (!isNaN(num) && num <= 15.9) {
-      setFatPercent(value);
-    }
+    setFatPercent(raw);
+    scheduleFatFormatting();
   };
 
   // Custom input handler for SNF % (mirrors Fat % behavior)
   const handleSnfPercentInput = (text) => {
-    // Allow only digits and a decimal point
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
-    // Empty input
     if (raw === '') {
+      if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
       setSnfPercent('');
       return;
     }
 
-    // If contains decimal point, honor as-is (limit to 1 dot and 2 decimals)
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0];
-      const rightAll = parts.slice(1).join(''); // collapse any extra dots
-      const right = rightAll.slice(0, 2); // limit to 2 decimals
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-
-      const num = parseFloat(value);
-      if (!isNaN(num) && num <= 15.9) {
-        setSnfPercent(value);
-      }
-      return;
-    }
-
-    // No decimal: allow direct input without auto-formatting
-    const value = raw.slice(0, 4); // allow up to 4 digits (e.g., 15.9)
-    const num = parseFloat(value);
-    if (!isNaN(num) && num <= 15.9) {
-      setSnfPercent(value);
-    }
+    setSnfPercent(raw);
+    scheduleSnfFormatting();
   };
 
-  // Custom input handler for CLR (decimal after 2 digits)
+  // Custom input handler for CLR (same trailing-decimal behavior, max 36.00)
   const handleClrInput = (text) => {
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
-    // Empty input
     if (raw === '') {
+      if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
       setClr('');
       return;
     }
 
-    // If contains decimal point, honor as-is (limit to 1 dot, 2 digits before, 2 digits after)
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0].slice(0, 2); // max 2 digits before decimal
-      const rightAll = parts.slice(1).join('');
-      const right = rightAll.slice(0, 2); // limit to 2 decimals
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-      setClr(value);
-      return;
-    }
-
-    // No decimal entered: insert after 2 digits
-    const digits = raw.replace(/\D/g, '').slice(0, 4); // allow up to 4 digits total (e.g., 9999 -> 99.99)
-
-    if (digits.length <= 2) {
-      // Do not force decimal until at least 3 digits are entered
-      setClr(digits);
-      return;
-    }
-
-    const left = digits.slice(0, 2);
-    const right = digits.slice(2, 4);
-    // If only one fractional digit and it is 0, pad to reflect examples like 230 -> 23.00
-    const paddedRight = right.length === 1 && right === '0' ? '00' : right;
-    const value = paddedRight.length > 0 ? `${left}.${paddedRight}` : `${left}.`;
-    setClr(value);
+    setClr(raw);
+    scheduleClrFormatting();
   };
 
   const handleClrRadioPress = () => {
@@ -547,7 +574,20 @@ const CollectionScreen = ({ navigation }) => {
 
         // Convert all numeric inputs to floats (fat/SNF-based types)
         const weightKg = parseFloat(weight);
-        const fatPercentage = parseFloat(fatPercent);
+
+        // Ensure fat%, snf%, and clr are formatted and within limits before calculations
+        const formattedFat = formatWithTrailingDecimal(
+          fatPercent,
+          15.0,
+          1,
+          () => triggerInputLimitPopup('fat limit error')
+        );
+        if (!formattedFat) {
+          setFatPercent('');
+          return;
+        }
+        const fatPercentage = parseFloat(formattedFat);
+        setFatPercent(formattedFat);
 
         // Calculate liters from kg (using 1.02 density factor)
         const liters = (weightKg / 1.02).toFixed(2);
@@ -558,11 +598,33 @@ const CollectionScreen = ({ navigation }) => {
         // Handle CLR and SNF calculations
         let snfPercentageValue, clrValue;
         if (selectedRadios.snf) {
-          snfPercentageValue = parseFloat(snfPercent);
+          const formattedSnf = formatWithTrailingDecimal(
+            snfPercent,
+            15.0,
+            1,
+            () => triggerInputLimitPopup('snf limit error')
+          );
+          if (!formattedSnf) {
+            setSnfPercent('');
+            return;
+          }
+          snfPercentageValue = parseFloat(formattedSnf);
+          setSnfPercent(formattedSnf);
           clrValue = (4 * (snfPercentageValue - 0.2 * fatPercentage - 0.14)).toFixed(3);
         } else {
-          clrValue = parseFloat(clr);
-          snfPercentageValue = calculateSnfFromClr(clr, fatPercent);
+          const formattedClr = formatWithTrailingDecimal(
+            clr,
+            36.0,
+            2,
+            () => triggerInputLimitPopup('clr limit error')
+          );
+          if (!formattedClr) {
+            setClr('');
+            return;
+          }
+          clrValue = parseFloat(formattedClr);
+          setClr(formattedClr);
+          snfPercentageValue = calculateSnfFromClr(formattedClr, formattedFat);
         }
 
         // Calculate SNF kg - Remove slice limitation
@@ -1090,6 +1152,25 @@ const CollectionScreen = ({ navigation }) => {
         </View>
       )}
 
+      {/* Popup Card for Input Limit Errors */}
+      {showInputLimitPopup && (
+        <View style={styles.popupCardOverlay}>
+          <View style={styles.popupCard}>
+            <View style={styles.popupIconContainer}>
+              <Icon name="alert-circle-outline" style={styles.iconStyle} />
+            </View>
+            <Text style={styles.popupTitle}>{t('invalid input')}</Text>
+            <Text style={styles.popupText}>{inputLimitMessage}</Text>
+            <TouchableOpacity
+              style={styles.addRateButton}
+              onPress={() => setShowInputLimitPopup(false)}
+            >
+              <Text style={styles.addRateButtonText}>{t('ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Main Content */}
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingContainer}
@@ -1288,7 +1369,18 @@ const CollectionScreen = ({ navigation }) => {
                     isFlatRateMode && styles.disabledInput
                   ]}
                   onFocus={() => setIsFatFocused(true)}
-                  onBlur={() => setIsFatFocused(false)}
+                  onBlur={() => {
+                    setIsFatFocused(false);
+                    if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+                    setFatPercent((current) =>
+                      formatWithTrailingDecimal(
+                        current,
+                        15.0,
+                        1,
+                        () => triggerInputLimitPopup('Fat%', '15.0')
+                      )
+                    );
+                  }}
                   value={fatPercent}
                   onChangeText={handleFatPercentInput}
                   keyboardType="decimal-pad"
@@ -1318,7 +1410,18 @@ const CollectionScreen = ({ navigation }) => {
                     !selectedRadios.snf && styles.disabledInput
                   ]}
                   onFocus={() => setIsSnfFocused(true)}
-                  onBlur={() => setIsSnfFocused(false)}
+                  onBlur={() => {
+                    setIsSnfFocused(false);
+                    if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+                    setSnfPercent((current) =>
+                      formatWithTrailingDecimal(
+                        current,
+                        15.0,
+                        1,
+                        () => triggerInputLimitPopup('SNF%', '15.0')
+                      )
+                    );
+                  }}
                   value={snfPercent}
                   onChangeText={handleSnfPercentInput}
                   placeholder="0.0"
@@ -1345,7 +1448,18 @@ const CollectionScreen = ({ navigation }) => {
                     !selectedRadios.clr && styles.disabledInput
                   ]}
                   onFocus={() => setIsClrFocused(true)}
-                  onBlur={() => setIsClrFocused(false)}
+                  onBlur={() => {
+                    setIsClrFocused(false);
+                    if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+                    setClr((current) =>
+                      formatWithTrailingDecimal(
+                        current,
+                        36.0,
+                        2,
+                        () => triggerInputLimitPopup('CLR', '36.00')
+                      )
+                    );
+                  }}
                   value={clr}
                   onChangeText={handleClrInput}
                   placeholder="0.00"

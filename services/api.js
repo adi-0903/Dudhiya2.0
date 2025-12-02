@@ -285,7 +285,7 @@ export const updateDairyInfo = async (dairyData) => {
       throw { error: `Invalid rate type. Must be one of: ${ALLOWED_DAIRY_RATE_TYPES.join(', ')}` };
     }
 
-    const response = await api.put(`${ENDPOINTS.DAIRY_INFO}${dairyData.id}/`, dairyData);
+    const response = await api.patch(`${ENDPOINTS.DAIRY_INFO}${dairyData.id}/`, dairyData);
     return response.data;
   } catch (error) {
     // Handle specific dairy information errors

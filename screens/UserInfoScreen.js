@@ -12,7 +12,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const RATE_TYPES = [
   { label: 'FAT + SNF', value: 'fat_snf' },
   { label: 'FAT + CLR', value: 'fat_clr' },
+  { label: 'KG', value: 'kg_only' },
+  { label: 'Liters', value: 'liters_only' },
 ];
+
+const RATE_TYPE_LABELS = RATE_TYPES.reduce((acc, type) => {
+  acc[type.value] = type.label;
+  return acc;
+}, {});
 
 const UserInfoScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -95,7 +102,7 @@ const UserInfoScreen = ({ navigation }) => {
             email: userData.email || t('not provided'),
             dairy_name: dairyData.dairy_name,
             dairy_address: dairyData.dairy_address,
-            rate_type: rateType === 'fat_snf' ? 'FAT + SNF' : 'FAT + CLR',
+            rate_type: RATE_TYPE_LABELS[rateType] || rateType,
             referral_code: referralCode.trim(),
             referral_message: referralResponse.message
           });
@@ -117,7 +124,7 @@ const UserInfoScreen = ({ navigation }) => {
           email: userData.email || t('not provided'),
           dairy_name: dairyData.dairy_name,
           dairy_address: dairyData.dairy_address,
-          rate_type: rateType === 'fat_snf' ? 'FAT + SNF' : 'FAT + CLR',
+          rate_type: RATE_TYPE_LABELS[rateType] || rateType,
           referral_code: t('not provided')
         });
         setShowSuccessModal(true);

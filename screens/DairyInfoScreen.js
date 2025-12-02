@@ -16,6 +16,8 @@ import { getDairyInfo, updateDairyInfo } from '../services/api';
 const RATE_TYPES = [
   { label: 'FAT + SNF', value: 'fat_snf' },
   { label: 'FAT + CLR', value: 'fat_clr' },
+  { label: 'KG', value: 'kg_only' },
+  { label: 'Liters', value: 'liters_only' },
 ];
 
 const DairyInfoScreen = ({ navigation }) => {

@@ -451,6 +451,9 @@
     "save": "सेव करें",
     
     "invalid input": "गलत इनपुट",
+    "fat limit error": "Fat% मान 15.0 से कम होना चाहिए",
+    "snf limit error": "SNF% मान 15.0 से कम होना चाहिए",
+    "clr limit error": "CLR मान 36.00 से कम होना चाहिए",
     "invalid fat step": "गलत फैट स्टेप",
     "invalid snf step": "गलत SNF स्टेप",
     "fat step max error": "फैट स्टेप 12.0% से अधिक नहीं हो सकता\n\nआपने डाला: {value}%\nअधिकतम अनुमतित: 12.0%",
