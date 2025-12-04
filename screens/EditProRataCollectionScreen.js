@@ -850,6 +850,107 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const recalculatePreviewWithSettings = (nextFatSnfRatio, nextFatThresholds, nextSnfThresholds) => {
+    try {
+      const weightKg = parseFloat(formData.weight);
+      const fatPercentage = parseFloat(formData.fat_percentage);
+      let snfPercentageValue;
+      let clrValue = '';
+      const milkRate = parseFloat(formData.milk_rate);
+      const baseSnfPercentage = parseFloat(formData.base_snf_percentage);
+
+      if (!weightKg || !fatPercentage || !milkRate || !baseSnfPercentage) {
+        return;
+      }
+
+      const liters = (weightKg / 1.02249).toFixed(2);
+      const fatKg = Math.floor((weightKg * (fatPercentage / 100)) * 100) / 100;
+
+      if (selectedRadios.clr) {
+        const snfFromClr = calculateSnfFromClr(formData.clr, fatPercentage);
+        if (snfFromClr === '') {
+          return;
+        }
+        snfPercentageValue = parseFloat(Number(snfFromClr).toFixed(2));
+        const parsedClr = parseFloat(formData.clr);
+        if (isNaN(parsedClr)) {
+          return;
+        }
+        clrValue = parsedClr.toFixed(2);
+      } else {
+        snfPercentageValue = parseFloat(formData.snf_percentage);
+        if (isNaN(snfPercentageValue)) {
+          return;
+        }
+        clrValue = '';
+      }
+
+      const snfKg = Math.floor((weightKg * (snfPercentageValue / 100)) * 100) / 100;
+
+      const fatRatioPercent = nextFatSnfRatio === '60_40' ? 60 : 52;
+      const snfRatioPercent = nextFatSnfRatio === '60_40' ? 40 : 48;
+      const fatRate = Math.floor((milkRate * fatRatioPercent / 6.5) * 100) / 100;
+      const snfRate = Math.floor((milkRate * snfRatioPercent / baseSnfPercentage) * 100) / 100;
+
+      let finalRate = milkRate;
+      let amountNum = 0;
+      const fatValForGate = parseFloat(fatPercentage);
+      const isProRata = Array.isArray(nextFatThresholds) && nextFatThresholds.some((t) => {
+        const threshold = parseFloat(t?.threshold);
+        const rate = parseFloat(t?.rate);
+        return !isNaN(threshold) && !isNaN(rate) && !isNaN(fatValForGate) && fatValForGate >= threshold;
+      });
+
+      if (isProRata) {
+        const appliedFatRate = resolveRateFromFatThresholds(fatPercentage, nextFatThresholds);
+        const appliedSnfRate = resolveRateFromSnfThresholds(snfPercentageValue, nextSnfThresholds);
+        const fatStepUpRateValue = (parseFloat(appliedFatRate) * 10) || 0;
+        const snfStepDownRateValue = (parseFloat(appliedSnfRate) * 10) || 0;
+        const fatAdjustment = (fatPercentage - 6.5) * fatStepUpRateValue;
+        const snfAdjustment = (snfPercentageValue - baseSnfPercentage) * snfStepDownRateValue;
+        finalRate = milkRate + fatAdjustment + snfAdjustment;
+        amountNum = finalRate * weightKg;
+      } else {
+        const sum = (parseFloat(fatKg) * parseFloat(fatRate)) + (parseFloat(snfKg) * parseFloat(snfRate));
+        amountNum = sum;
+      }
+
+      const amount = amountNum.toFixed(2);
+      const solidWeight = (amountNum / milkRate).toFixed(3);
+
+      const milkType = (formData.milk_type || '').toLowerCase().replace(/\s+/g, '');
+      const formattedMilkType = milkType === 'cow+buffalo' ? 'cow_buffalo' : milkType;
+
+      const collectionData = {
+        customer: formData.customer_id,
+        collection_date: formData.collection_date.toISOString().split('T')[0],
+        collection_time: formData.collection_time.toLowerCase(),
+        milk_type: formattedMilkType,
+        measured: 'liters',
+        liters: liters.toString(),
+        kg: weightKg.toString(),
+        fat_percentage: fatPercentage.toString(),
+        fat_kg: fatKg.toString(),
+        clr: clrValue ? clrValue.toString() : '',
+        snf_percentage: snfPercentageValue.toString(),
+        snf_kg: snfKg.toString(),
+        fat_rate: fatRate.toString(),
+        snf_rate: snfRate.toString(),
+        milk_rate: milkRate.toString(),
+        solid_weight: solidWeight.toString(),
+        amount: amount.toString(),
+        base_snf_percentage: baseSnfPercentage.toString(),
+        fat_step_up_rate: (resolveRateFromFatThresholds(fatPercentage, nextFatThresholds) || 0).toString(),
+        snf_step_down_rate: (resolveRateFromSnfThresholds(snfPercentageValue, nextSnfThresholds) || 0).toString(),
+        is_pro_rata: true,
+      };
+
+      setPreviewData(collectionData);
+    } catch (error) {
+      console.error('Error recalculating preview with updated rate chart:', error);
+    }
+  };
+
   const handleNext = async () => {
     if (validateInputs()) {
       try {
@@ -1951,7 +2052,7 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                       <Text style={styles.previewSectionTitle}>{t('collection details')}</Text>
                     </View>
                     <View style={styles.previewCard}>
-                      <View style={[styles.previewRow, { marginBottom: 16 }]}>  {/* Added marginBottom */}
+                      <View style={[styles.previewRow, { marginBottom: 16 }]}>  
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Weight</Text>
                           <Text style={styles.previewValue}>{parseFloat(formData.weight)} KG</Text>
@@ -1991,15 +2092,24 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                         </View>
                       </View>
                     </View>
-                    <View style={styles.previewCard}>
-                      <View style={styles.previewRow}>
-                        <Text style={styles.previewLabel}>Avg. Rate</Text>
-                        <Text style={styles.previewValue}>₹{(parseFloat(previewData.amount) / parseFloat(previewData.kg)).toFixed(2)}</Text>
-                      </View>
-                      <View style={styles.previewRow}>
-                        <Text style={styles.previewLabel}>Amount</Text>
-                        <Text style={styles.previewValue}>₹{previewData.amount}</Text>
-                      </View>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[styles.rateChartButton, { alignSelf: 'center', marginTop: 0, marginBottom: 16, backgroundColor: '#0D47A1' }]}
+                    onPress={openRateChartModal}
+                  >
+                    <Icon name="tune" size={18} color="#FFFFFF" />
+                    <Text style={[styles.rateChartButtonText, { color: '#FFFFFF' }]}>{t('rate chart used')}</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.previewCard}>
+                    <View style={styles.previewRow}>
+                      <Text style={styles.previewLabel}>Avg. Rate</Text>
+                      <Text style={styles.previewValue}>₹{(parseFloat(previewData.amount) / parseFloat(previewData.kg)).toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.previewRow}>
+                      <Text style={styles.previewLabel}>Amount</Text>
+                      <Text style={styles.previewValue}>₹{previewData.amount}</Text>
                     </View>
                   </View>
                 </View>
@@ -2269,14 +2379,21 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                           }))
                         : [];
 
-                      setFatStepUpThresholds(sortFatThresholds(updatedFat));
-                      setSnfStepDownThresholds(sortSnfThresholds(updatedSnf));
+                      const sortedFat = sortFatThresholds(updatedFat);
+                      const sortedSnf = sortSnfThresholds(updatedSnf);
+
+                      setFatStepUpThresholds(sortedFat);
+                      setSnfStepDownThresholds(sortedSnf);
 
                       const overrides = {
                         fat_snf_ratio: tempFatSnfRatio,
                         clr_conversion_factor: tempClrConversionFactor,
                       };
                       await persistDairySettings(overrides, { skipIfUnchanged: true });
+
+                      if (previewData) {
+                        recalculatePreviewWithSettings(tempFatSnfRatio, sortedFat, sortedSnf);
+                      }
 
                       setShowRateChartModal(false);
                     } catch (e) {
