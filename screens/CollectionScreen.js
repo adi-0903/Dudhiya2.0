@@ -174,6 +174,20 @@ const CollectionScreen = ({ navigation }) => {
     return { snf: false, clr: false };
   };
 
+  const calculateAverageRate = (data) => {
+    if (!data) return '0.00';
+    const amount = parseFloat(data.amount);
+    if (!amount || Number.isNaN(amount)) return '0.00';
+
+    const divisor = data.measured === 'liters'
+      ? parseFloat(data.liters)
+      : parseFloat(data.kg);
+
+    if (!divisor || Number.isNaN(divisor)) return '0.00';
+
+    return (amount / divisor).toFixed(2);
+  };
+
   // State for rate type in the rate settings modal
   const [tempRateType, setTempRateType] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
   const [rateTypePickerValue, setRateTypePickerValue] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
@@ -343,7 +357,7 @@ const CollectionScreen = ({ navigation }) => {
     if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
     fatFormatTimeoutRef.current = setTimeout(() => {
       setFatPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('fat limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('fat limit error'))
       );
     }, 2000);
   };
@@ -352,7 +366,7 @@ const CollectionScreen = ({ navigation }) => {
     if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
     snfFormatTimeoutRef.current = setTimeout(() => {
       setSnfPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('snf limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('snf limit error'))
       );
     }, 2000);
   };
@@ -543,8 +557,8 @@ const CollectionScreen = ({ navigation }) => {
           const liters = parseFloat(weight);
           const rawKg = liters * 1.02;
           const weightKg = parseFloat(rawKg.toFixed(2));
-          const amount = (weightKg * milkRate).toFixed(3);
-          const solidWeight = (amount / milkRate).toFixed(3);
+          const amount = (liters * milkRate).toFixed(3);
+          const solidWeight = weightKg.toFixed(3);
 
           const collectionData = {
             collection_time: selectedTime.toLowerCase(),
@@ -579,7 +593,7 @@ const CollectionScreen = ({ navigation }) => {
         const formattedFat = formatWithTrailingDecimal(
           fatPercent,
           15.0,
-          1,
+          2,
           () => triggerInputLimitPopup('fat limit error')
         );
         if (!formattedFat) {
@@ -601,7 +615,7 @@ const CollectionScreen = ({ navigation }) => {
           const formattedSnf = formatWithTrailingDecimal(
             snfPercent,
             15.0,
-            1,
+            2,
             () => triggerInputLimitPopup('snf limit error')
           );
           if (!formattedSnf) {
@@ -1359,7 +1373,7 @@ const CollectionScreen = ({ navigation }) => {
               <View style={[styles.inputGroup, { marginLeft: 12 }]}>
                 <View style={styles.labelWithRadio}>
                   <View style={{ width: 20 }} /> {/* This creates the same spacing as radio button */}
-                  <Text style={styles.inputLabel}>Fat %</Text>
+                  <Text style={[styles.inputLabel, isFlatRateMode && styles.disabledLabel]}>Fat %</Text>
                 </View>
                 <TextInput
                   style={[
@@ -1376,7 +1390,7 @@ const CollectionScreen = ({ navigation }) => {
                       formatWithTrailingDecimal(
                         current,
                         15.0,
-                        1,
+                        2,
                         () => triggerInputLimitPopup('Fat%', '15.0')
                       )
                     );
@@ -1385,7 +1399,7 @@ const CollectionScreen = ({ navigation }) => {
                   onChangeText={handleFatPercentInput}
                   keyboardType="decimal-pad"
                   editable={!isFlatRateMode}
-                  placeholder="0.0"
+                  placeholder="0.00"
                   placeholderTextColor="#B0B0B0"
                 />
                 {errors.fatPercent && <Text style={styles.errorText}>{errors.fatPercent}</Text>}
@@ -1417,14 +1431,14 @@ const CollectionScreen = ({ navigation }) => {
                       formatWithTrailingDecimal(
                         current,
                         15.0,
-                        1,
+                        2,
                         () => triggerInputLimitPopup('SNF%', '15.0')
                       )
                     );
                   }}
                   value={snfPercent}
                   onChangeText={handleSnfPercentInput}
-                  placeholder="0.0"
+                  placeholder="0.00"
                   placeholderTextColor="#B0B0B0"
                   keyboardType="decimal-pad"
                   editable={selectedRadios.snf}
@@ -1462,7 +1476,7 @@ const CollectionScreen = ({ navigation }) => {
                   }}
                   value={clr}
                   onChangeText={handleClrInput}
-                  placeholder="0.00"
+                  placeholder="00.00"
                   placeholderTextColor="#B0B0B0"
                   keyboardType="decimal-pad"
                   editable={selectedRadios.clr}
@@ -1829,7 +1843,7 @@ const CollectionScreen = ({ navigation }) => {
                     </View>
                     <View style={styles.previewRow}>
                       <Text style={styles.previewLabel}>Avg. Rate</Text>
-                      <Text style={styles.previewValue}>₹{(parseFloat(previewData.amount) / parseFloat(previewData.kg)).toFixed(2)}</Text>
+                      <Text style={styles.previewValue}>₹{calculateAverageRate(previewData)}</Text>
                     </View>
                     <View style={styles.previewRow}>
                       <Text style={styles.previewLabel}>Amount</Text>

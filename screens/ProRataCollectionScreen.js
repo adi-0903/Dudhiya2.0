@@ -14,7 +14,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
-  Dimensions
+  Dimensions,
+  Animated
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -115,6 +116,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const fatFormatTimeoutRef = useRef(null);
   const snfFormatTimeoutRef = useRef(null);
   const clrFormatTimeoutRef = useRef(null);
+  const rateChartHighlightAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     return () => {
@@ -339,6 +341,32 @@ const ProRataCollectionScreen = ({ navigation }) => {
   };
 
   const isRateChartSet = isValidThresholdList(fatStepUpThresholds) && isValidThresholdList(snfStepDownThresholds);
+
+  useEffect(() => {
+    if (!isRateChartSet) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(rateChartHighlightAnim, {
+            toValue: 0.5,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rateChartHighlightAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => {
+        animation.stop();
+        rateChartHighlightAnim.setValue(1);
+      };
+    } else {
+      rateChartHighlightAnim.setValue(1);
+    }
+  }, [isRateChartSet, rateChartHighlightAnim]);
 
   const addFatThreshold = () => {
     const arr = tempFatStepUpThresholds || [];
@@ -710,7 +738,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
     if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
     fatFormatTimeoutRef.current = setTimeout(() => {
       setFatPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('fat limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('fat limit error'))
       );
     }, 2000);
   };
@@ -719,7 +747,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
     if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
     snfFormatTimeoutRef.current = setTimeout(() => {
       setSnfPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('snf limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('snf limit error'))
       );
     }, 2000);
   };
@@ -923,7 +951,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
         const formattedFat = formatWithTrailingDecimal(
           fatPercent,
           15.0,
-          1,
+          2,
           () => triggerInputLimitPopup('fat limit error')
         );
         if (!formattedFat) {
@@ -972,7 +1000,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
           const formattedSnf = formatWithTrailingDecimal(
             snfPercent,
             15.0,
-            1,
+            2,
             () => triggerInputLimitPopup('snf limit error')
           );
           if (!formattedSnf) {
@@ -1808,7 +1836,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                     formatWithTrailingDecimal(
                       current,
                       15.0,
-                      1,
+                      2,
                       () => triggerInputLimitPopup('fat limit error')
                     )
                   );
@@ -1816,7 +1844,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 value={fatPercent}
                 onChangeText={handleFatPercentInput}
                 keyboardType="decimal-pad"
-                placeholder="0.0"
+                placeholder="0.00"
                 placeholderTextColor="#B0B0B0"
               />
               {errors.fatPercent && <Text style={styles.errorText}>{errors.fatPercent}</Text>}
@@ -1848,14 +1876,14 @@ const ProRataCollectionScreen = ({ navigation }) => {
                     formatWithTrailingDecimal(
                       current,
                       15.0,
-                      1,
+                      2,
                       () => triggerInputLimitPopup('snf limit error')
                     )
                   );
                 }}
                 value={snfPercent?.toString() || ''}
                 onChangeText={handleSnfPercentInput}
-                placeholder="0.0"
+                placeholder="0.00"
                 placeholderTextColor="#B0B0B0"
                 keyboardType="decimal-pad"
                 editable={selectedRadios.snf}
@@ -1893,7 +1921,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 }}
                 value={clr}
                 onChangeText={handleClrInput}
-                placeholder="0.00"
+                placeholder="00.00"
                 placeholderTextColor="#B0B0B0"
                 keyboardType="decimal-pad"
                 editable={selectedRadios.clr}
@@ -1904,27 +1932,29 @@ const ProRataCollectionScreen = ({ navigation }) => {
 
           {/* Rate Chart Settings Button and Next Button in same row */}
           <View style={[styles.measureRow, { justifyContent: 'space-between' }]}>
-            <TouchableOpacity 
-              style={[
-                styles.rateChartButton, 
-                !isRateChartSet && { backgroundColor: '#0D47A1' }
-              ]}
-              onPress={handleButtonPress(openRateChartModal)}
-            >
-              <Icon 
-                name="tune" 
-                size={18} 
-                color={isRateChartSet ? "#0D47A1" : "#FFFFFF"} 
-              />
-              <Text 
+            <Animated.View style={!isRateChartSet ? { opacity: rateChartHighlightAnim } : null}>
+              <TouchableOpacity 
                 style={[
-                  styles.rateChartButtonText, 
-                  !isRateChartSet && { color: '#FFFFFF' }
+                  styles.rateChartButton, 
+                  !isRateChartSet && { backgroundColor: '#0D47A1' }
                 ]}
+                onPress={handleButtonPress(openRateChartModal)}
               >
-                {isRateChartSet ? t('rate chart') : t('set rate chart')}
-              </Text>
-            </TouchableOpacity>
+                <Icon 
+                  name="tune" 
+                  size={18} 
+                  color={isRateChartSet ? "#0D47A1" : "#FFFFFF"} 
+                />
+                <Text 
+                  style={[
+                    styles.rateChartButtonText, 
+                    !isRateChartSet && { color: '#FFFFFF' }
+                  ]}
+                >
+                  {isRateChartSet ? t('rate chart') : t('set rate chart')}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
             
             <TouchableOpacity 
               style={[
