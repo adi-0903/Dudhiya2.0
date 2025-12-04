@@ -1838,8 +1838,8 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                 const parts = sanitizedText.split('.');
                 if (parts.length > 2) return;
                 
-                // Limit to one decimal place
-                if (parts[1] && parts[1].length > 1) return;
+                // Limit to two decimal places
+                if (parts[1] && parts[1].length > 2) return;
                 
                 // Check if value is between 1 and 15
                 const numValue = parseFloat(sanitizedText);
@@ -1878,8 +1878,8 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                 const parts = sanitizedText.split('.');
                 if (parts.length > 2) return;
                 
-                // Limit to one decimal place
-                if (parts[1] && parts[1].length > 1) return;
+                // Limit to two decimal places
+                if (parts[1] && parts[1].length > 2) return;
                 
                 // Check if value is between 1 and 15
                 const numValue = parseFloat(sanitizedText);
