@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -18,11 +18,10 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { getCurrentMarketPrice, getAllCustomers, getCustomers, createCollection, getCollections, getDairyInfo, updateDairyInfo } from '../services/api';
+import { getCurrentMarketPrice, getAllCustomers, getCustomers, createCollection, getCollections, getDairyInfo, updateDairyInfo, getProRataRateChart, upsertProRataRateChart } from '../services/api';
 import BottomNav from '../components/BottomNav';
 import { useTranslation } from 'react-i18next';
 import useKeyboardDismiss from '../hooks/useKeyboardDismiss';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS } from '../utils/dairySettings';
 
@@ -110,6 +109,21 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const [isFatStepUpFocused, setIsFatStepUpFocused] = useState(false);
   const [isSnfStepDownFocused, setIsSnfStepDownFocused] = useState(false);
 
+  const [showInputLimitPopup, setShowInputLimitPopup] = useState(false);
+  const [inputLimitMessage, setInputLimitMessage] = useState('');
+
+  const fatFormatTimeoutRef = useRef(null);
+  const snfFormatTimeoutRef = useRef(null);
+  const clrFormatTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+      if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+      if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+    };
+  }, []);
+
   // Rate Chart modal and thresholds (Pro-Rata gating UI)
   const [showRateChartModal, setShowRateChartModal] = useState(false);
   const [proRataFatThreshold, setProRataFatThreshold] = useState('6.5');
@@ -160,70 +174,60 @@ const ProRataCollectionScreen = ({ navigation }) => {
   };
 
   // Persist and load step rate inputs (Fat Stepup and SNF Stepdown)
-  useEffect(() => {
-    const loadStepRates = async () => {
-      try {
-        // Load threshold-based arrays first
-        const savedFatThresholds = await AsyncStorage.getItem('@fat_step_up_thresholds');
-        if (savedFatThresholds) {
-          setFatStepUpThresholds(JSON.parse(savedFatThresholds));
-        } else {
-          // Backward compatibility: migrate from old range format or single rate
-          const oldRanges = await AsyncStorage.getItem('@fat_step_up_ranges');
-          if (oldRanges) {
-            const ranges = JSON.parse(oldRanges);
-            // Convert ranges to thresholds (use 'from' values)
-            const thresholds = ranges.map(r => ({ threshold: r.from, rate: r.rate }));
-            setFatStepUpThresholds(thresholds);
-            await AsyncStorage.setItem('@fat_step_up_thresholds', JSON.stringify(thresholds));
-          } else {
-            // Legacy single rate migration or set default
-            const legacy = await AsyncStorage.getItem('@fat_step_up_rate');
-            if (legacy) {
-              const migrated = [{ threshold: '6.5', rate: legacy }];
-              setFatStepUpThresholds(migrated);
-              await AsyncStorage.setItem('@fat_step_up_thresholds', JSON.stringify(migrated));
-            } else {
-              // Set default fat threshold
-              const defaultFat = [{ threshold: '6.5', rate: '' }];
-              setFatStepUpThresholds(defaultFat);
-              await AsyncStorage.setItem('@fat_step_up_thresholds', JSON.stringify(defaultFat));
-            }
-            if (legacy !== null) setFatStepUpRate(legacy);
-          }
-        }
-      } catch (e) {}
+  const [rateChartId, setRateChartId] = useState(null);
+  const sortFatThresholds = (items = []) =>
+    [...items].sort((a, b) => {
+      if (a?.id && b?.id) {
+        return a.id - b.id;
+      }
+      const aStep = parseFloat(a?.threshold) || 0;
+      const bStep = parseFloat(b?.threshold) || 0;
+      return aStep - bStep;
+    });
 
-      try {
-        const savedSnfThresholds = await AsyncStorage.getItem('@snf_step_down_thresholds');
-        if (savedSnfThresholds) {
-          setSnfStepDownThresholds(JSON.parse(savedSnfThresholds));
-        } else {
-          // Backward compatibility for SNF
-          const oldRanges = await AsyncStorage.getItem('@snf_step_down_ranges');
-          if (oldRanges) {
-            const ranges = JSON.parse(oldRanges);
-            const thresholds = ranges.map(r => ({ threshold: r.from, rate: r.rate }));
-            setSnfStepDownThresholds(thresholds);
-            await AsyncStorage.setItem('@snf_step_down_thresholds', JSON.stringify(thresholds));
-          } else {
-            // Legacy single rate migration or set default
-            const legacy = await AsyncStorage.getItem('@snf_step_down_rate');
-            if (legacy) {
-              const migrated = [{ threshold: '8.5', rate: legacy }];
-              setSnfStepDownThresholds(migrated);
-              await AsyncStorage.setItem('@snf_step_down_thresholds', JSON.stringify(migrated));
-            } else {
-              // Set default SNF threshold
-              const defaultSnf = [{ threshold: '9.0', rate: '' }];
-              setSnfStepDownThresholds(defaultSnf);
-              await AsyncStorage.setItem('@snf_step_down_thresholds', JSON.stringify(defaultSnf));
-            }
-            if (legacy !== null) setSnfStepDownRate(legacy);
-          }
-        }
-      } catch (e) {}
-    };
+  const sortSnfThresholds = (items = []) =>
+    [...items].sort((a, b) => {
+      if (a?.id && b?.id) {
+        return a.id - b.id;
+      }
+      const aStep = parseFloat(a?.threshold) || 0;
+      const bStep = parseFloat(b?.threshold) || 0;
+      return aStep - bStep;
+    });
+
+  const loadStepRates = async () => {
+    try {
+      const response = await getProRataRateChart();
+      if (response?.id) {
+        setRateChartId(response.id);
+      }
+
+      const serverFatSteps = Array.isArray(response?.fat_step_up_rates)
+        ? response.fat_step_up_rates.map((item) => ({
+            threshold: String(item.step ?? ''),
+            rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+            id: item.id,
+          }))
+        : [{ threshold: '6.5', rate: '' }];
+
+      const serverSnfSteps = Array.isArray(response?.snf_step_down_rates)
+        ? response.snf_step_down_rates.map((item) => ({
+            threshold: String(item.step ?? ''),
+            rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+            id: item.id,
+          }))
+        : [{ threshold: '9.0', rate: '' }];
+
+      setFatStepUpThresholds(sortFatThresholds(serverFatSteps));
+      setSnfStepDownThresholds(sortSnfThresholds(serverSnfSteps));
+    } catch (e) {
+      console.error('Error loading pro-rata rate chart:', e);
+      setFatStepUpThresholds([{ threshold: '6.5', rate: '' }]);
+      setSnfStepDownThresholds([{ threshold: '9.0', rate: '' }]);
+    }
+  };
+
+  useEffect(() => {
     loadStepRates();
   }, []);
 
@@ -545,6 +549,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
   // Add useFocusEffect to fetch rate when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      loadStepRates();
       fetchCurrentRate();
       fetchCustomers();
       fetchLatestCollection();
@@ -655,110 +660,116 @@ const ProRataCollectionScreen = ({ navigation }) => {
     } finally {
       setIsLoadingCustomers(false);
     }
+  }
+
+  const triggerInputLimitPopup = (translationKey) => {
+    setInputLimitMessage(t(translationKey));
+    setShowInputLimitPopup(true);
   };
 
-  const handleSnfChange = (text) => {
-    if (text === '' || allowedSnfValues.includes(text)) {
-      setSnf(text);
-      setSnfError('');
-    } else {
-      setSnfError('Please select a valid SNF value');
+  const formatWithTrailingDecimal = (rawValue, maxValue, decimals, onOverflow) => {
+    if (!rawValue) return '';
+
+    const sanitized = (rawValue || '').replace(/[^0-9.]/g, '');
+
+    if (sanitized.includes('.')) {
+      const num = parseFloat(sanitized);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return num.toFixed(decimals);
     }
+
+    const digits = sanitized.replace(/\D/g, '');
+    if (!digits) return '';
+
+    if (digits.length === 1) {
+      const num = parseFloat(digits);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return num.toFixed(decimals);
+    }
+
+    const intPart = digits.slice(0, digits.length - 1);
+    const fracPart = digits.slice(-1);
+    let num = parseFloat(`${intPart}.${fracPart}`);
+    if (isNaN(num)) return '';
+    if (num > maxValue) {
+      if (onOverflow) onOverflow();
+      return '';
+    }
+    return num.toFixed(decimals);
   };
 
-  // Custom input handler for Fat % (pro-rata)
+  const scheduleFatFormatting = () => {
+    if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+    fatFormatTimeoutRef.current = setTimeout(() => {
+      setFatPercent((current) =>
+        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('fat limit error'))
+      );
+    }, 2000);
+  };
+
+  const scheduleSnfFormatting = () => {
+    if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+    snfFormatTimeoutRef.current = setTimeout(() => {
+      setSnfPercent((current) =>
+        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('snf limit error'))
+      );
+    }, 2000);
+  };
+
+  const scheduleClrFormatting = () => {
+    if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+    clrFormatTimeoutRef.current = setTimeout(() => {
+      setClr((current) =>
+        formatWithTrailingDecimal(current, 36.0, 2, () => triggerInputLimitPopup('clr limit error'))
+      );
+    }, 2000);
+  };
+
   const handleFatPercentInput = (text) => {
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
     if (raw === '') {
+      if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
       setFatPercent('');
       return;
     }
 
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0];
-      const rightAll = parts.slice(1).join('');
-      const right = rightAll.slice(0, 2);
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-
-      const num = parseFloat(value);
-      if (!isNaN(num) && num <= 15.9) {
-        setFatPercent(value);
-      }
-      return;
-    }
-
-    // No decimal: allow direct input without auto-formatting
-    const value = raw.slice(0, 4); // allow up to 4 digits (e.g., 15.9)
-    const num = parseFloat(value);
-    if (!isNaN(num) && num <= 15.9) {
-      setFatPercent(value);
-    }
+    setFatPercent(raw);
+    scheduleFatFormatting();
   };
 
-  // Custom input handler for SNF % (mirrors Fat % behavior)
   const handleSnfPercentInput = (text) => {
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
     if (raw === '') {
+      if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
       setSnfPercent('');
       return;
     }
 
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0];
-      const rightAll = parts.slice(1).join('');
-      const right = rightAll.slice(0, 2);
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-
-      const num = parseFloat(value);
-      if (!isNaN(num) && num <= 15.9) {
-        setSnfPercent(value);
-      }
-      return;
-    }
-
-    // No decimal: allow direct input without auto-formatting
-    const value = raw.slice(0, 4); // allow up to 4 digits (e.g., 15.9)
-    const num = parseFloat(value);
-    if (!isNaN(num) && num <= 15.9) {
-      setSnfPercent(value);
-    }
+    setSnfPercent(raw);
+    scheduleSnfFormatting();
   };
 
-  // Custom input handler for CLR (decimal after 2 digits)
   const handleClrInput = (text) => {
     const raw = (text || '').replace(/[^0-9.]/g, '');
 
     if (raw === '') {
+      if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
       setClr('');
       return;
     }
 
-    if (raw.includes('.')) {
-      const parts = raw.split('.');
-      const left = parts[0].slice(0, 2);
-      const rightAll = parts.slice(1).join('');
-      const right = rightAll.slice(0, 2);
-      const value = right.length > 0 ? `${left}.${right}` : `${left}.`;
-      setClr(value);
-      return;
-    }
-
-    const digits = raw.replace(/\D/g, '').slice(0, 4);
-
-    if (digits.length <= 2) {
-      setClr(digits);
-      return;
-    }
-
-    const left = digits.slice(0, 2);
-    const right = digits.slice(2, 4);
-    const paddedRight = right.length === 1 && right === '0' ? '00' : right;
-    const value = paddedRight.length > 0 ? `${left}.${paddedRight}` : `${left}.`;
-    setClr(value);
+    setClr(raw);
+    scheduleClrFormatting();
   };
 
   const handleClrRadioPress = () => {
@@ -797,25 +808,6 @@ const ProRataCollectionScreen = ({ navigation }) => {
     try {
       setFatSnfRatio(value);
       await persistDairySettings({ fat_snf_ratio: value }, { skipIfUnchanged: true });
-    } catch (e) {
-      // ignore persist errors silently
-    }
-  };
-
-  // Handlers to persist step rates
-  const handleFatStepUpRateChange = async (value) => {
-    try {
-      setFatStepUpRate(value);
-      await AsyncStorage.setItem('@fat_step_up_rate', value);
-    } catch (e) {
-      // ignore persist errors silently
-    }
-  };
-
-  const handleSnfStepDownRateChange = async (value) => {
-    try {
-      setSnfStepDownRate(value);
-      await AsyncStorage.setItem('@snf_step_down_rate', value);
     } catch (e) {
       // ignore persist errors silently
     }
@@ -927,7 +919,20 @@ const ProRataCollectionScreen = ({ navigation }) => {
       try {
         // Convert all numeric inputs to floats
         const weightKg = parseFloat(weight);
-        const fatPercentage = parseFloat(fatPercent);
+
+        const formattedFat = formatWithTrailingDecimal(
+          fatPercent,
+          15.0,
+          1,
+          () => triggerInputLimitPopup('fat limit error')
+        );
+        if (!formattedFat) {
+          setFatPercent('');
+          return;
+        }
+        const fatPercentage = parseFloat(formattedFat);
+        setFatPercent(formattedFat);
+
         const milkRate = parseFloat(currentRate);
         const baseSnfPercentage = parseFloat(snf);
 
@@ -941,7 +946,17 @@ const ProRataCollectionScreen = ({ navigation }) => {
         let clrValue = '';
 
         if (selectedRadios.clr) {
-          const snfFromClr = calculateSnfFromClr(clr, fatPercentage);
+          const formattedClr = formatWithTrailingDecimal(
+            clr,
+            36.0,
+            2,
+            () => triggerInputLimitPopup('clr limit error')
+          );
+          if (!formattedClr) {
+            setClr('');
+            return;
+          }
+          const snfFromClr = calculateSnfFromClr(formattedClr, formattedFat);
           if (snfFromClr === '') {
             Alert.alert(
               t('invalid input'),
@@ -950,17 +965,22 @@ const ProRataCollectionScreen = ({ navigation }) => {
             return;
           }
           snfPercentageValue = parseFloat(snfFromClr);
-          const parsedClr = parseFloat(clr);
+          const parsedClr = parseFloat(formattedClr);
           clrValue = !isNaN(parsedClr) ? parsedClr.toFixed(2) : '';
+          setClr(formattedClr);
         } else {
-          snfPercentageValue = parseFloat(snfPercent);
-          if (isNaN(snfPercentageValue)) {
-            Alert.alert(
-              t('invalid input'),
-              t('please enter a valid snf percentage.')
-            );
+          const formattedSnf = formatWithTrailingDecimal(
+            snfPercent,
+            15.0,
+            1,
+            () => triggerInputLimitPopup('snf limit error')
+          );
+          if (!formattedSnf) {
+            setSnfPercent('');
             return;
           }
+          snfPercentageValue = parseFloat(formattedSnf);
+          setSnfPercent(formattedSnf);
           clrValue = '';
         }
 
@@ -1568,6 +1588,24 @@ const ProRataCollectionScreen = ({ navigation }) => {
         </View>
       )}
 
+      {showInputLimitPopup && (
+        <View style={styles.popupCardOverlay}>
+          <View style={styles.popupCard}>
+            <View style={styles.popupIconContainer}>
+              <Icon name="alert-circle-outline" style={styles.iconStyle} />
+            </View>
+            <Text style={styles.popupTitle}>{t('invalid input')}</Text>
+            <Text style={styles.popupText}>{inputLimitMessage}</Text>
+            <TouchableOpacity
+              style={styles.addRateButton}
+              onPress={() => setShowInputLimitPopup(false)}
+            >
+              <Text style={styles.addRateButtonText}>{t('ok')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Main Content */}
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingContainer}
@@ -1763,7 +1801,18 @@ const ProRataCollectionScreen = ({ navigation }) => {
                   { textAlign: (isFatFocused || !!fatPercent) ? 'left' : 'center' }
                 ]}
                 onFocus={() => setIsFatFocused(true)}
-                onBlur={() => setIsFatFocused(false)}
+                onBlur={() => {
+                  setIsFatFocused(false);
+                  if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
+                  setFatPercent((current) =>
+                    formatWithTrailingDecimal(
+                      current,
+                      15.0,
+                      1,
+                      () => triggerInputLimitPopup('fat limit error')
+                    )
+                  );
+                }}
                 value={fatPercent}
                 onChangeText={handleFatPercentInput}
                 keyboardType="decimal-pad"
@@ -1792,7 +1841,18 @@ const ProRataCollectionScreen = ({ navigation }) => {
                   !selectedRadios.snf && styles.disabledInput
                 ]}
                 onFocus={() => setIsSnfFocused(true)}
-                onBlur={() => setIsSnfFocused(false)}
+                onBlur={() => {
+                  setIsSnfFocused(false);
+                  if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
+                  setSnfPercent((current) =>
+                    formatWithTrailingDecimal(
+                      current,
+                      15.0,
+                      1,
+                      () => triggerInputLimitPopup('snf limit error')
+                    )
+                  );
+                }}
                 value={snfPercent?.toString() || ''}
                 onChangeText={handleSnfPercentInput}
                 placeholder="0.0"
@@ -1819,7 +1879,18 @@ const ProRataCollectionScreen = ({ navigation }) => {
                   !selectedRadios.clr && styles.disabledInput
                 ]}
                 onFocus={() => setIsClrFocused(true)}
-                onBlur={() => setIsClrFocused(false)}
+                onBlur={() => {
+                  setIsClrFocused(false);
+                  if (clrFormatTimeoutRef.current) clearTimeout(clrFormatTimeoutRef.current);
+                  setClr((current) =>
+                    formatWithTrailingDecimal(
+                      current,
+                      36.0,
+                      2,
+                      () => triggerInputLimitPopup('clr limit error')
+                    )
+                  );
+                }}
                 value={clr}
                 onChangeText={handleClrInput}
                 placeholder="0.00"
@@ -2403,19 +2474,54 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 style={[styles.modalButton, styles.confirmButton]}
                 onPress={handleButtonPress(async () => {
                   try {
-                    // Persist new threshold step rates
-                    await persistDairySettings({ fat_step_up_thresholds: tempFatStepUpThresholds, snf_step_down_thresholds: tempSnfStepDownThresholds }, { skipIfUnchanged: true });
+                    const payload = {
+                      fat_step_up_rates: (tempFatStepUpThresholds || [])
+                        .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
+                        .map((item) => ({
+                          id: item.id,
+                          step: Number(item.threshold),
+                          rate: Number(item.rate),
+                        })),
+                      snf_step_down_rates: (tempSnfStepDownThresholds || [])
+                        .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
+                        .map((item) => ({
+                          id: item.id,
+                          step: Number(item.threshold),
+                          rate: -Math.abs(Number(item.rate)),
+                        })),
+                    };
 
-                    // Apply to live state
-                    setFatStepUpThresholds(tempFatStepUpThresholds || []);
-                    setSnfStepDownThresholds(tempSnfStepDownThresholds || []);
-                    // If preview is active, recalc immediately with new settings
+                    const result = await upsertProRataRateChart(rateChartId, payload);
+                    setRateChartId(result?.id || rateChartId);
+
+                    const updatedFat = Array.isArray(result?.fat_step_up_rates)
+                      ? result.fat_step_up_rates.map((item) => ({
+                          threshold: String(item.step ?? ''),
+                          rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                          id: item.id,
+                        }))
+                      : [];
+
+                    const updatedSnf = Array.isArray(result?.snf_step_down_rates)
+                      ? result.snf_step_down_rates.map((item) => ({
+                          threshold: String(item.step ?? ''),
+                          rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                          id: item.id,
+                        }))
+                      : [];
+
+                    setFatStepUpThresholds(sortFatThresholds(updatedFat));
+                    setSnfStepDownThresholds(sortSnfThresholds(updatedSnf));
+
                     recalculatePreviewWithSettings(
-                      fatSnfRatio, // Use existing ratio value
-                      tempFatStepUpThresholds || [],
-                      tempSnfStepDownThresholds || []
+                      fatSnfRatio,
+                      updatedFat,
+                      updatedSnf
                     );
-                  } catch (e) {}
+                  } catch (e) {
+                    console.error('Error saving pro-rata rate chart:', e);
+                    Alert.alert(t('error'), t('failed to save rate chart. please try again.'));
+                  }
                   setShowRateChartModal(false);
                 })}
               >
@@ -2952,6 +3058,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.changeRatesSaveButton}
                 onPress={async () => {
+                  const previousRateType = dairyDetails?.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
                   const overrides = {
                     base_snf: tempBaseSnf,
                     clr_conversion_factor: tempClrConversionFactor,
@@ -2959,9 +3066,17 @@ const ProRataCollectionScreen = ({ navigation }) => {
                     rate_type: tempRateType
                   };
 
-                  await persistDairySettings(overrides, { skipIfUnchanged: true });
+                  const updated = await persistDairySettings(overrides, { skipIfUnchanged: true });
                   setSelectedRadios(getRadiosForRateType(tempRateType));
                   setShowChangeRatesModal(false);
+
+                  const newRateType = updated?.rate_type || tempRateType;
+                  if (
+                    previousRateType !== newRateType &&
+                    (newRateType === 'kg_only' || newRateType === 'liters_only')
+                  ) {
+                    navigation.navigate('Home');
+                  }
                 }}
               >
                 <Text style={styles.changeRatesSaveText}>{t('save')}</Text>
@@ -3356,19 +3471,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   measureInput: {
-    flex: 0,  // Set flex to 0 to allow width to be defined
-    width: 75,  // Set width to 75 for all input boxes
+    flex: 0,
+    width: 75,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
     height: 36,
-    color: '#000000',  // Adding explicit black color
+    color: '#000000',
   },
   rateInputWithIndicator: {
     flexDirection: 'row',
@@ -3377,28 +3492,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    paddingHorizontal: 8,
+    overflow: 'hidden',
     height: 36,
   },
   rateInputIndicator: {
-    fontSize: 18,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: '#FFE0E0',
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#B00020',
-    marginRight: 4,
+    color: '#D32F2F',
+    minWidth: 30,
+    textAlign: 'center',
   },
   positiveRateInput: {
-    borderColor: '#0D47A1',
+    borderColor: '#4CAF50',
   },
   rateInputIndicatorPositive: {
-    color: '#0D47A1',
+    backgroundColor: '#E8F5E9',
+    color: '#4CAF50',
   },
   rateModalIndicatorInput: {
     flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     fontSize: 16,
     fontWeight: '800',
-    color: '#000000',
-    paddingVertical: 6,
     textAlign: 'center',
+    color: '#000000',
   },
   inputError: {
     borderColor: '#FF4444',

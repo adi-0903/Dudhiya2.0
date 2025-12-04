@@ -116,7 +116,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
 
   // Add isLoading state
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [collectionData, setCollectionData] = useState(collection || null);
 
   // Initialize with collection data if available
   const initialFormData = {
@@ -125,7 +125,13 @@ const EditCollectionScreen = ({ route, navigation }) => {
     collection_date: collection?.collection_date ? new Date(collection.collection_date) : new Date(),
     collection_time: collection?.collection_time || 'morning',
     milk_type: collection?.milk_type || '',
-    weight: collection?.kg?.toString() || '',
+    // If the original collection was measured in liters, prefer liters value for editing;
+    // otherwise fall back to kg.
+    weight: collection
+      ? (collection.measured === 'liters'
+          ? (collection.liters?.toString() || '')
+          : (collection.kg?.toString() || ''))
+      : '',
     fat_percentage: collection?.fat_percentage?.toString() || '',
     snf_percentage: collection?.snf_percentage?.toString() || '',
     milk_rate: collection?.milk_rate?.toString() || '',
@@ -227,6 +233,33 @@ const EditCollectionScreen = ({ route, navigation }) => {
     acc[option.value] = option.label;
     return acc;
   }, {});
+
+  const isFlatRateType = (rateType) => rateType === 'kg_only' || rateType === 'liters_only';
+  const isFlatRateMode = isFlatRateType(rateTypePickerValue);
+  const isKgOnlyMode = rateTypePickerValue === 'kg_only';
+  const isLitersOnlyMode = rateTypePickerValue === 'liters_only';
+
+  // Keep the weight field aligned with the current dairy rate type and loaded collection
+  // data. When rate type is liters_only, prefer the collection's liters value; otherwise
+  // use kg. Do not override manual edits once the user has changed something (isDirty).
+  useEffect(() => {
+    if (!collectionData) return;
+    if (isDirty) return;
+
+    const source = rateTypePickerValue === 'liters_only'
+      ? (collectionData.liters ?? collectionData.kg)
+      : (collectionData.kg ?? collectionData.liters);
+
+    if (source === null || source === undefined || source === '') return;
+
+    const parsed = parseFloat(source.toString());
+    if (isNaN(parsed)) return;
+
+    setFormData(prev => ({
+      ...prev,
+      weight: parsed.toFixed(2),
+    }));
+  }, [collectionData, rateTypePickerValue, isDirty]);
 
   // Fetch collection details on mount
   useEffect(() => {
@@ -388,6 +421,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
     try {
       setIsLoading(true);
       const response = await getCollection(collectionId);
+      setCollectionData(response);
       console.log('API Response structure:', JSON.stringify(response, null, 2));
       console.log('Customer field from API:', response.customer);
       console.log('Customer ID field from API:', response.customer_id);
@@ -415,13 +449,23 @@ const EditCollectionScreen = ({ route, navigation }) => {
         customer_id: customerDisplayId // The display ID shown to users
       });
 
+      // Prefer liters for weight if this collection was originally measured in liters,
+      // otherwise use kg. This keeps the edit UI consistent with how the data was entered.
+      const apiWeightSource = response.measured === 'liters'
+        ? (response.liters ?? response.kg)
+        : (response.kg ?? response.liters);
+
+      const parsedWeight = apiWeightSource !== null && apiWeightSource !== undefined && apiWeightSource !== ''
+        ? parseFloat(apiWeightSource.toString())
+        : NaN;
+
       setFormData({
         customer_id: customerId, // Store the database ID needed for the API
         customer_name: customerName,
         collection_date: new Date(response.collection_date),
         collection_time: response.collection_time,
         milk_type: response.milk_type,
-        weight: parseFloat(response.kg?.toString() || '').toFixed(2),
+        weight: isNaN(parsedWeight) ? '' : parsedWeight.toFixed(2),
         fat_percentage: parseFloat(response.fat_percentage?.toString() || '').toFixed(1),
         snf_percentage: parseFloat(response.snf_percentage?.toString() || '').toFixed(2),
         milk_rate: parseFloat(response.milk_rate?.toString() || '').toFixed(2),
@@ -496,27 +540,114 @@ const EditCollectionScreen = ({ route, navigation }) => {
 
   const validateInputs = () => {
     const newErrors = {};
-    
+
     if (!formData.customer_id) newErrors.customer_id = 'Customer is required';
     if (!formData.weight) newErrors.weight = 'Weight is required';
-    if (!formData.fat_percentage) newErrors.fat_percentage = 'Fat % is required';
-    if (selectedRadios.snf && !formData.snf_percentage) newErrors.snf_percentage = 'SNF % is required';
-    if (selectedRadios.clr && !formData.clr) newErrors.clr = 'CLR is required';
-    if (!selectedRadios.snf && !selectedRadios.clr) newErrors.radio = 'At least one option must be selected';
+
+    if (!isFlatRateMode) {
+      if (!formData.fat_percentage) newErrors.fat_percentage = 'Fat % is required';
+      if (selectedRadios.snf && !formData.snf_percentage) newErrors.snf_percentage = 'SNF % is required';
+      if (selectedRadios.clr && !formData.clr) newErrors.clr = 'CLR is required';
+      if (!selectedRadios.snf && !selectedRadios.clr) newErrors.radio = 'At least one option must be selected';
+    }
+
     if (!formData.milk_rate) newErrors.milk_rate = 'Milk rate is required';
     if (!formData.base_snf_percentage) newErrors.base_snf_percentage = 'Base SNF % is required';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const isNextDisabled = isFlatRateMode
+    ? !formData.weight
+    : (
+      !formData.weight ||
+      !formData.fat_percentage ||
+      (selectedRadios.snf && !formData.snf_percentage) ||
+      (selectedRadios.clr && !formData.clr) ||
+      (!selectedRadios.snf && !selectedRadios.clr)
+    );
+
   const handleNext = async () => {
     if (validateInputs()) {
       try {
+        const milkRate = parseFloat(formData.milk_rate);
+        const baseSnfPercentage = parseFloat(formData.base_snf_percentage);
+        const formattedMilkType = (formData.milk_type || '').toLowerCase();
+
+        if (rateTypePickerValue === 'kg_only') {
+          const weightKg = parseFloat(formData.weight);
+          const liters = (weightKg / 1.02).toFixed(2);
+          const amount = (weightKg * milkRate).toFixed(3);
+          const solidWeight = (amount / milkRate).toFixed(3);
+
+          console.log('Using customer ID for API:', formData.customer_id);
+
+          const collectionData = {
+            customer: formData.customer_id,
+            collection_date: formData.collection_date.toISOString().split('T')[0],
+            collection_time: formData.collection_time.toLowerCase(),
+            milk_type: formattedMilkType,
+            measured: 'kg',
+            liters: liters.toString(),
+            kg: weightKg.toString(),
+            fat_percentage: '0',
+            fat_kg: '0',
+            clr: '',
+            snf_percentage: '0',
+            snf_kg: '0',
+            fat_rate: '0',
+            snf_rate: '0',
+            milk_rate: milkRate.toString(),
+            solid_weight: solidWeight.toString(),
+            amount: amount.toString(),
+            base_snf_percentage: baseSnfPercentage.toString()
+          };
+
+          setPreviewData(collectionData);
+          setShowPreviewModal(true);
+          return;
+        }
+
+        if (rateTypePickerValue === 'liters_only') {
+          const liters = parseFloat(formData.weight);
+          const rawKg = liters * 1.02;
+          const weightKg = parseFloat(rawKg.toFixed(2));
+          const amount = (weightKg * milkRate).toFixed(3);
+          const solidWeight = (amount / milkRate).toFixed(3);
+
+          console.log('Using customer ID for API:', formData.customer_id);
+
+          const collectionData = {
+            customer: formData.customer_id,
+            collection_date: formData.collection_date.toISOString().split('T')[0],
+            collection_time: formData.collection_time.toLowerCase(),
+            milk_type: formattedMilkType,
+            measured: 'liters',
+            liters: liters.toString(),
+            kg: weightKg.toFixed(2).toString(),
+            fat_percentage: '0',
+            fat_kg: '0',
+            clr: '',
+            snf_percentage: '0',
+            snf_kg: '0',
+            fat_rate: '0',
+            snf_rate: '0',
+            milk_rate: milkRate.toString(),
+            solid_weight: solidWeight.toString(),
+            amount: amount.toString(),
+            base_snf_percentage: baseSnfPercentage.toString()
+          };
+
+          setPreviewData(collectionData);
+          setShowPreviewModal(true);
+          return;
+        }
+
         const weightKg = parseFloat(formData.weight);
         const fatPercentage = parseFloat(formData.fat_percentage);
         let snfPercentage;
-        
+
         // Calculate SNF from CLR if CLR is selected
         if (selectedRadios.clr) {
           const clr = parseFloat(formData.clr);
@@ -524,14 +655,11 @@ const EditCollectionScreen = ({ route, navigation }) => {
         } else {
           snfPercentage = parseFloat(formData.snf_percentage);
         }
-        
-        const milkRate = parseFloat(formData.milk_rate);
-        const baseSnfPercentage = parseFloat(formData.base_snf_percentage);
 
         const liters = (weightKg / 1.02249).toFixed(2);
 
-        const fatKg = Math.floor((weightKg * (fatPercentage / 100)) * 100) / 100;         
-        const snfKg = Math.floor((weightKg * (snfPercentage / 100)) * 100) / 100; 
+        const fatKg = Math.floor((weightKg * (fatPercentage / 100)) * 100) / 100;
+        const snfKg = Math.floor((weightKg * (snfPercentage / 100)) * 100) / 100;
 
         // Important change: Use original CLR value directly if CLR radio is selected
         // Only calculate CLR if SNF radio is selected
@@ -541,16 +669,16 @@ const EditCollectionScreen = ({ route, navigation }) => {
         } else {
           clrValue = (4 * (snfPercentage - 0.2 * fatPercentage - parseFloat(clrConversionFactor))).toFixed(3);
         }
-        
+
         // Calculate rates based on selected Fat/SNF ratio
         const fatRatioPercent = fatSnfRatio === '60_40' ? 60 : 52;
         const snfRatioPercent = fatSnfRatio === '60_40' ? 40 : 48;
-        
+
         const fatRate = Math.floor((milkRate * fatRatioPercent / 6.5) * 100) / 100;
         const snfRate = Math.floor((milkRate * snfRatioPercent / baseSnfPercentage) * 100) / 100;
 
-        const amt = Math.floor(parseFloat(fatKg) * parseFloat(fatRate) * 100) / 100 + 
-                  Math.floor(parseFloat(snfKg) * parseFloat(snfRate) * 100) / 100;
+        const amt = Math.floor(parseFloat(fatKg) * parseFloat(fatRate) * 100) / 100 +
+          Math.floor(parseFloat(snfKg) * parseFloat(snfRate) * 100) / 100;
         const amount = amt.toFixed(3);
 
         // Calculate solid weight
@@ -563,7 +691,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
           customer: formData.customer_id, // This should be the database ID, not the display ID
           collection_date: formData.collection_date.toISOString().split('T')[0],
           collection_time: formData.collection_time.toLowerCase(),
-          milk_type: formData.milk_type.toLowerCase(), // Changed from animal_type to milk_type
+          milk_type: formattedMilkType, // Changed from animal_type to milk_type
           measured: 'kg',
           liters: liters.toString(),
           kg: weightKg.toString(),
@@ -1328,7 +1456,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
         {/* Weight and Fat % Row */}
         <View style={styles.row}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Weight (kg)</Text>
+            <Text style={styles.label}>{isLitersOnlyMode ? 'Liters' : 'Weight (kg)'}</Text>
             <TextInput
               value={formData.weight}
               onChangeText={(text) => {
@@ -1346,6 +1474,8 @@ const EditCollectionScreen = ({ route, navigation }) => {
               }}
               keyboardType="decimal-pad"
               style={styles.textInput}
+              placeholder="0.00"
+              placeholderTextColor="#B0B0B0"
               error={errors.weight}
             />
           </View>
@@ -1372,10 +1502,11 @@ const EditCollectionScreen = ({ route, navigation }) => {
                 handleInputChange('fat_percentage', sanitizedText);
               }}
               keyboardType="decimal-pad"
-              style={styles.textInput}
+              style={[styles.textInput, isFlatRateMode && styles.disabledInput]}
               error={errors.fat_percentage}
               placeholder="1.0 - 15.0"
-              placeholderTextColor="#999"
+              placeholderTextColor="#B0B0B0"
+              editable={!isFlatRateMode}
             />
           </View>
         </View>
@@ -1384,13 +1515,23 @@ const EditCollectionScreen = ({ route, navigation }) => {
         <View style={styles.row}>
           <View style={styles.inputGroup}>
             <TouchableOpacity 
-              style={styles.labelWithRadio}
+              style={[
+                styles.labelWithRadio,
+                (!selectedRadios.snf || isFlatRateMode) && styles.disabledRadioRow
+              ]}
               onPress={handleSnfRadioPress}
             >
               <View style={styles.radioButton}>
                 <View style={selectedRadios.snf ? styles.radioInnerCircleSelected : styles.radioInnerCircle} />
               </View>
-              <Text style={styles.label}>SNF %</Text>
+              <Text
+                style={[
+                  styles.label,
+                  (!selectedRadios.snf || isFlatRateMode) && styles.disabledLabel
+                ]}
+              >
+                SNF %
+              </Text>
             </TouchableOpacity>
             <TextInput
               value={formData.snf_percentage}
@@ -1415,11 +1556,11 @@ const EditCollectionScreen = ({ route, navigation }) => {
               style={[
                 styles.textInput, 
                 errors.snf_percentage && styles.inputError,
-                !selectedRadios.snf && styles.disabledInput
+                (!selectedRadios.snf || isFlatRateMode) && styles.disabledInput
               ]}
               placeholder="1.0 - 15.0"
-              placeholderTextColor="#999"
-              editable={selectedRadios.snf}
+              placeholderTextColor="#B0B0B0"
+              editable={selectedRadios.snf && !isFlatRateMode}
             />
             {errors.snf_percentage && (
               <Text style={styles.errorText}>{errors.snf_percentage}</Text>
@@ -1454,13 +1595,23 @@ const EditCollectionScreen = ({ route, navigation }) => {
         <View style={styles.row}>
           <View style={styles.inputGroup}>
             <TouchableOpacity 
-              style={styles.labelWithRadio}
+              style={[
+                styles.labelWithRadio,
+                (!selectedRadios.clr || isFlatRateMode) && styles.disabledRadioRow
+              ]}
               onPress={handleClrRadioPress}
             >
               <View style={styles.radioButton}>
                 <View style={selectedRadios.clr ? styles.radioInnerCircleSelected : styles.radioInnerCircle} />
               </View>
-              <Text style={styles.label}>CLR</Text>
+              <Text
+                style={[
+                  styles.label,
+                  (!selectedRadios.clr || isFlatRateMode) && styles.disabledLabel
+                ]}
+              >
+                CLR
+              </Text>
             </TouchableOpacity>
             <TextInput
               value={formData.clr}
@@ -1481,12 +1632,12 @@ const EditCollectionScreen = ({ route, navigation }) => {
               style={[
                 styles.textInput, 
                 errors.clr && styles.inputError,
-                !selectedRadios.clr && styles.disabledInput,
+                (!selectedRadios.clr || isFlatRateMode) && styles.disabledInput,
                 { color: '#000000' }
               ]}
               placeholder="0.00"
-              placeholderTextColor="#ccc"
-              editable={selectedRadios.clr}
+              placeholderTextColor="#B0B0B0"
+              editable={selectedRadios.clr && !isFlatRateMode}
             />
             {errors.clr && (
               <Text style={styles.errorText}>{errors.clr}</Text>
@@ -1494,7 +1645,14 @@ const EditCollectionScreen = ({ route, navigation }) => {
           </View>
           <Text style={{fontSize: 18, top: 5, fontWeight: 'bold', color: '#0D47A1'}}>→</Text>
           <View style={styles.inputGroup} top="9">
-            <Text style={styles.label}>SNF:</Text>
+            <Text
+              style={[
+                styles.label,
+                (!selectedRadios.clr || isFlatRateMode) && styles.disabledLabel
+              ]}
+            >
+              SNF:
+            </Text>
             <Text style={[styles.textInput, { backgroundColor: '#f5f5f5', color: '#0D47A1', textAlign: 'center', paddingTop: 10 }]}>
               {selectedRadios.clr && formData.clr && formData.fat_percentage ? calculateSnfFromClr(formData.clr, formData.fat_percentage) : '0.0'}
             </Text>
@@ -1515,22 +1673,10 @@ const EditCollectionScreen = ({ route, navigation }) => {
         <TouchableOpacity 
           style={[
             styles.nextButton,
-            (
-              !formData.weight || 
-              !formData.fat_percentage || 
-              (selectedRadios.snf && !formData.snf_percentage) || 
-              (selectedRadios.clr && !formData.clr) ||
-              (!selectedRadios.snf && !selectedRadios.clr)
-            ) && styles.nextButtonDisabled
+            isNextDisabled && styles.nextButtonDisabled
           ]}
           onPress={handleNext}
-          disabled={
-            !formData.weight || 
-            !formData.fat_percentage || 
-            (selectedRadios.snf && !formData.snf_percentage) || 
-            (selectedRadios.clr && !formData.clr) ||
-            (!selectedRadios.snf && !selectedRadios.clr)
-          }
+          disabled={isNextDisabled}
         >
           <Text style={styles.nextButtonText}>{t('next')}</Text>
           <Icon name="arrow-right" size={20} color="#fff" />
@@ -1580,10 +1726,10 @@ const EditCollectionScreen = ({ route, navigation }) => {
                       <Text style={styles.previewSectionTitle}>{t('collection details')}</Text>
                     </View>
                     <View style={styles.previewCard}>
-                      <View style={[styles.previewRow, { marginBottom: 16 }]}>  {/* Added marginBottom */}
+                      <View style={[styles.previewRow, { marginBottom: 16 }]}>  
                         <View style={styles.previewItem}>
-                          <Text style={styles.previewLabel}>Weight</Text>
-                          <Text style={styles.previewValue}>{parseFloat(formData.weight)} KG</Text>
+                          <Text style={styles.previewLabel}>{isLitersOnlyMode ? 'Liters' : 'Weight'}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(formData.weight)} {isLitersOnlyMode ? 'L' : 'KG'}</Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Fat %</Text>
@@ -2919,6 +3065,14 @@ const styles = StyleSheet.create({
   },
   disabledInput: {
     backgroundColor: '#f5f5f5',
+    borderColor: '#E0E0E0',
+    opacity: 0.6,
+  },
+  disabledRadioRow: {
+    opacity: 0.5,
+  },
+  disabledLabel: {
+    color: '#B0B0B0',
   },
   inputError: {
     borderColor: '#ff0000',
