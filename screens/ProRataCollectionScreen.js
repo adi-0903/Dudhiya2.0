@@ -700,19 +700,37 @@ const ProRataCollectionScreen = ({ navigation }) => {
 
     const sanitized = (rawValue || '').replace(/[^0-9.]/g, '');
 
+    // Helper to truncate (not round) to the requested decimal places
+    const toFixedTruncate = (num) => {
+      const factor = Math.pow(10, decimals);
+      const truncated = Math.floor(num * factor) / factor;
+      return truncated.toFixed(decimals);
+    };
+
+    // If user already entered a decimal point, normalize, optionally scale down, and clamp
     if (sanitized.includes('.')) {
-      const num = parseFloat(sanitized);
+      let num = parseFloat(sanitized);
       if (isNaN(num)) return '';
+
+      // Example cases for FAT:
+      // 61.  -> 61.0 / 10 = 6.10
+      // 61.5 -> 61.5 / 10 = 6.15
       if (num > maxValue) {
-        if (onOverflow) onOverflow();
-        return '';
+        const divided = num / 10;
+        if (divided > maxValue) {
+          if (onOverflow) onOverflow();
+          return '';
+        }
+        num = divided;
       }
-      return num.toFixed(decimals);
+
+      return toFixedTruncate(num);
     }
 
     const digits = sanitized.replace(/\D/g, '');
     if (!digits) return '';
 
+    // Single digit -> D.0 / D.00 (e.g. 6 -> 6.00)
     if (digits.length === 1) {
       const num = parseFloat(digits);
       if (isNaN(num)) return '';
@@ -720,18 +738,32 @@ const ProRataCollectionScreen = ({ navigation }) => {
         if (onOverflow) onOverflow();
         return '';
       }
-      return num.toFixed(decimals);
+      return toFixedTruncate(num);
     }
 
-    const intPart = digits.slice(0, digits.length - 1);
-    const fracPart = digits.slice(-1);
+    // Two digits: last digit as decimal (e.g. 61 -> 6.10)
+    if (digits.length === 2) {
+      const intPart = digits.slice(0, 1);
+      const fracPart = digits.slice(1);
+      let num = parseFloat(`${intPart}.${fracPart}`);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return toFixedTruncate(num);
+    }
+
+    // Three or more digits: last TWO digits as decimal (e.g. 1267 -> 12.67, 3025 -> 30.25)
+    const intPart = digits.slice(0, digits.length - 2);
+    const fracPart = digits.slice(-2);
     let num = parseFloat(`${intPart}.${fracPart}`);
     if (isNaN(num)) return '';
     if (num > maxValue) {
       if (onOverflow) onOverflow();
       return '';
     }
-    return num.toFixed(decimals);
+    return toFixedTruncate(num);
   };
 
   const scheduleFatFormatting = () => {
@@ -1260,8 +1292,13 @@ const ProRataCollectionScreen = ({ navigation }) => {
       month: 'short',
       year: 'numeric'
     });
-    
+
     const timeDisplay = latestCollection.collection_time === 'morning' ? 'Morning' : 'Evening';
+
+    const fatPct = parseFloat(latestCollection.fat_percentage);
+    const snfPct = parseFloat(latestCollection.snf_percentage);
+    const baseSnfPct = parseFloat(latestCollection.base_snf_percentage);
+    const clrValue = latestCollection.clr != null ? parseFloat(latestCollection.clr) : NaN;
 
     return (
       <View>
@@ -1314,20 +1351,20 @@ const ProRataCollectionScreen = ({ navigation }) => {
               <Text style={styles.cellText}>{parseFloat(latestCollection.kg).toFixed(2)}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.fat_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{!isNaN(fatPct) ? fatPct.toFixed(2) : '-'}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.snf_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{!isNaN(snfPct) ? snfPct.toFixed(2) : '-'}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.base_snf_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{!isNaN(baseSnfPct) ? baseSnfPct.toFixed(2) : '-'}</Text>
             </View>
-            <View style={[styles.cell, { flex: 1.2 }]}>
-              <Text style={styles.cellText}>{latestCollection.clr ? parseFloat(latestCollection.clr).toFixed(1) : '-'}</Text>
+            <View style={[styles.cell, { flex: 1.2 }]}> 
+              <Text style={styles.cellText}>{!isNaN(clrValue) ? clrValue.toFixed(2) : '-'}</Text>
             </View>
           </TouchableOpacity>
         </View>
-        
+
         <TouchableOpacity 
           style={styles.showCollectionsButton}
           onPress={() => navigation.navigate('GenerateProRataFullReportScreen')}
@@ -2262,11 +2299,11 @@ const ProRataCollectionScreen = ({ navigation }) => {
                       <View style={styles.previewRow}>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Fat %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(previewData.fat_percentage).toFixed(1)}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(previewData.fat_percentage).toFixed(2)}</Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>SNF %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage)}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage).toFixed(2)}</Text>
                         </View>
                       </View>
                       <View style={styles.previewRow}>
@@ -2282,7 +2319,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                       <View style={styles.previewRow}>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>CLR</Text>
-                          <Text style={styles.previewValue}>{previewData.clr ? parseFloat(previewData.clr).toFixed(1) : '-'}</Text>
+                          <Text style={styles.previewValue}>{previewData.clr ? parseFloat(previewData.clr).toFixed(2) : '-'}</Text>
                         </View>
                         <View style={styles.previewItem}>
                           <BaseSnfSelector />
