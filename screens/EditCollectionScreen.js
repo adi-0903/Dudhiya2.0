@@ -3086,7 +3086,8 @@ const styles = StyleSheet.create({
   changeRatesButtonContainer: {
     marginTop: 0,
     marginBottom: 15,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   changeRatesButton: {
     flexDirection: 'row',
@@ -3102,7 +3103,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     minWidth: 150,
   },
   changeRatesButtonContent: {

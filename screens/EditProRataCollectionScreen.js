@@ -1972,8 +1972,8 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
         {/* Fat/SNF Ratio is configured inside the Rate Chart modal (no inline row) */}
 
         {/* Rate Chart Settings Button (replaces inline step rate inputs) */}
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { alignItems: 'flex-start' }]}>
+        <View style={[styles.row, { justifyContent: 'center' }]}>
+          <View style={[styles.inputGroup, { alignItems: 'center' }]}>
             <TouchableOpacity 
               style={styles.rateChartButton}
               onPress={openRateChartModal}
@@ -1982,7 +1982,6 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
               <Text style={styles.rateChartButtonText}>{isRateChartSet ? t('rate chart') : t('set rate chart')}</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.inputGroup} />
         </View>
 
         {/* Base SNF Section - Moved to bottom */}
