@@ -28,7 +28,7 @@
     "enter dairy address": "Enter Dairy Address",
 
     "edit profile": "Edit Profile",
-    "enter customer name": "Enter Customer Name",
+    "enter customer name": "Enter Supplier Name",
     "enter father's name": "Enter Father's Name",
     "enter phone number": "Enter Phone Number",
     "enter village name": "Enter Village Name",
@@ -52,7 +52,7 @@
     "generate full report": "Generate Full Report",
     "generate pdf": "Generate PDF",
     "view collections by date": "View Collections by Date",
-    "view individual customer bills": "View Individual Customer Bills",
+    "view individual customer bills": "View Individual Supplier Bills",
 
     "supplier": "Supplier",
     "manage suppliers": "Manage Suppliers",
@@ -67,9 +67,9 @@
     "address": "Address",
     "cancel": "Cancel",
     "save": "Save",
-    "customer details": "Customer Details",
+    "customer details": "Supplier Details",
     "update": "Update",
-    "edit customer": "Edit Customer",
+    "edit customer": "Edit Supplier",
     "view report": "View Report",
     "collection reports": "Collection Reports",
     "report": "Report",
@@ -112,7 +112,7 @@
     "clr conversion factor": "CLR Conversion Factor",
     "clr conversion description": "Select the conversion factor used in the CLR to SNF formula",
     "fat snf ratio": "Fat/SNF Ratio",
-    "search customers": "Search Customers",
+    "search customers": "Search Suppliers",
     "search by id, name, phone": "Search by ID, Name, Phone",
     "add": "Add",
     "select date": "Select Date",
@@ -158,8 +158,8 @@
     "generate a report to view your collection details": "Generate a Report to View Your Collection Details",
     "purchase report - day wise": "Purchase Report - Day Wise",
     "view collection by date": "View Collection by Date",
-    "purchase summary - person wise": "Purchase Summary - Customer Wise",
-    "view collections by customer": "View Collections as per Customer",
+    "purchase summary - person wise": "Purchase Summary - Supplier Wise",
+    "view collections by customer": "View Collections as per Supplier",
     "select date range": "Select Date Range",
     "generate report": "Generate Report",
     "purchase summary report": "Purchase Summary Report",
@@ -167,7 +167,7 @@
     "weight": "Weight",
     "supplier bill": "Supplier Bills",
     "new individual supplier bills": "New Individual Supplier Bills",
-    "add new customer": "Add New Customer",
+    "add new customer": "Add New Supplier",
 
     "calculator": "Calculator",
     "milk rate calculations": "Milk Rate Calculations",
@@ -292,15 +292,15 @@
     "you have not set milk rate. please set the milk rate.": "You have not set milk rate. Please set the milk rate.",
 
     "duplicate collection": "Duplicate Collection",
-    "an identical collection already exists for this customer": "An identical collection already exists for this customer",
+    "an identical collection already exists for this customer": "An identical collection already exists for this supplier",
     "clear & start new": "Clear & Start New",
     "dismiss": "Dismiss",
 
-    "customer required": "Customer Required",
-    "please select a customer before proceeding.": "Please select a customer before proceeding.",
+    "customer required": "Supplier Required",
+    "please select a customer before proceeding.": "Please select a supplier before proceeding.",
     "show collections": "Show Collections",
 
-    "invalid customer id": "Invalid Customer ID",
+    "invalid customer id": "Invalid Supplier ID",
     "no data found for selected date range": "No data found for selected date range",
     "file not found. please generate the report again.": "File not found. Please generate the report again.",
     "sharing is not available on this device": "Sharing is not available on this device",
@@ -376,8 +376,8 @@
 
     "name and phone number are required": "Name and Phone number are required",
 
-    "customer updated successfully!": "Customer updated successfully!",
-    "customer added successfully!": "Customer added successfully!",
+    "customer updated successfully!": "Supplier updated successfully!",
+    "customer added successfully!": "Supplier added successfully!",
 
     "failed to update collection. this collection has already been edited 1 time.": "Failed to update collection. This collection has already been edited 1 time.",
 
