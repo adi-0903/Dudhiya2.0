@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -10,14 +10,21 @@ import {
   Alert
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCollectionFeeConfig } from '../services/api';
 
 const WalletInfo = () => {
   const navigation = useNavigation();
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const [supportPhoneNumber] = useState('+91 7454860294');
   const { t, i18n } = useTranslation();
+  const [collectionFeeConfig, setCollectionFeeConfig] = useState(null);
+  const [isFeeLoading, setIsFeeLoading] = useState(true);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -31,7 +38,19 @@ const WalletInfo = () => {
       }
     };
     
+    const loadCollectionFee = async () => {
+      try {
+        const config = await getCollectionFeeConfig();
+        setCollectionFeeConfig(config);
+      } catch (error) {
+        console.error('Error loading collection fee config:', error);
+      } finally {
+        setIsFeeLoading(false);
+      }
+    };
+
     loadSavedLanguage();
+    loadCollectionFee();
   }, [i18n]);
 
   const handleWhatsAppPress = async () => {
@@ -57,6 +76,13 @@ const WalletInfo = () => {
 
   const handleSupportPress = () => {
     setShowHelpModal(true);
+  };
+
+  const closeVideoModal = async () => {
+    try {
+      await videoRef.current?.pauseAsync();
+    } catch (e) {}
+    setShowVideoModal(false);
   };
 
   const walletSteps = [
@@ -128,7 +154,30 @@ const WalletInfo = () => {
           <Text style={styles.introText}>
             {t('learn wallet system')}
           </Text>
+          <TouchableOpacity 
+            style={styles.videoButton}
+            onPress={() => setShowVideoModal(true)}
+          >
+            <Icon name="play-circle" size={22} color="#fff" />
+            <Text style={styles.videoButtonText}>{t('how wallet works')}</Text>
+          </TouchableOpacity>
         </View>
+
+        {!isFeeLoading && collectionFeeConfig && (
+          <View style={styles.feeInfoContainer}>
+            <View style={styles.feeIconContainer}>
+              <Icon name="cash-multiple" size={24} color="#fff" />
+            </View>
+            <View style={styles.feeTextContainer}>
+              <Text style={styles.feeTitle}>{t('wallet fee title')}</Text>
+              <Text style={styles.feeDescription}>
+                {collectionFeeConfig.enabled
+                  ? t('wallet fee description', { rate: Number(collectionFeeConfig.per_kg_rate).toFixed(3) })
+                  : t('wallet fee description disabled')}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.stepsContainer}>
           {walletSteps.map((step, index) => (
@@ -158,6 +207,43 @@ const WalletInfo = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showVideoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeVideoModal}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeVideoModal}
+        >
+          <TouchableOpacity 
+            style={styles.videoModalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <TouchableOpacity
+              style={styles.closeIconButton}
+              onPress={closeVideoModal}
+            >
+              <Icon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+
+            <Text style={styles.videoTitle}>{t('how wallet works')}</Text>
+            <Video
+              ref={videoRef}
+              style={styles.videoPlayer}
+              source={require('../assets/Dudhiya-welcome.mp4')}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              isLooping={false}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={showHelpModal}
@@ -284,6 +370,44 @@ const styles = StyleSheet.create({
   },
   stepsContainer: {
     padding: 20,
+  },
+  feeInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 5,
+    borderRadius: 12,
+    padding: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  feeIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#0D47A1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  feeTextContainer: {
+    flex: 1,
+  },
+  feeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+    marginBottom: 4,
+  },
+  feeDescription: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 20,
   },
   stepCard: {
     flexDirection: 'row',
@@ -438,6 +562,44 @@ const styles = StyleSheet.create({
     top: 10,
     right: 10,
     padding: 5,
+  },
+  videoButton: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0D47A1',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    elevation: 3,
+  },
+  videoButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  videoModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    width: '100%',
+    maxWidth: 380,
+    elevation: 5,
+  },
+  videoTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  videoPlayer: {
+    width: '100%',
+    height: 320,
+    borderRadius: 12,
+    backgroundColor: '#000',
   },
 });
 

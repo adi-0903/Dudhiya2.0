@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { applyReferralCode, getUserInfo } from '../services/api';
 import BottomNav from '../components/BottomNav';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ReferralScreen = () => {
   const navigation = useNavigation();

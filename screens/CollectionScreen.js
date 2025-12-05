@@ -174,6 +174,20 @@ const CollectionScreen = ({ navigation }) => {
     return { snf: false, clr: false };
   };
 
+  const calculateAverageRate = (data) => {
+    if (!data) return '0.00';
+    const amount = parseFloat(data.amount);
+    if (!amount || Number.isNaN(amount)) return '0.00';
+
+    const divisor = data.measured === 'liters'
+      ? parseFloat(data.liters)
+      : parseFloat(data.kg);
+
+    if (!divisor || Number.isNaN(divisor)) return '0.00';
+
+    return (amount / divisor).toFixed(2);
+  };
+
   // State for rate type in the rate settings modal
   const [tempRateType, setTempRateType] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
   const [rateTypePickerValue, setRateTypePickerValue] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
@@ -302,48 +316,152 @@ const CollectionScreen = ({ navigation }) => {
 
     const sanitized = (rawValue || '').replace(/[^0-9.]/g, '');
 
-    // If user already entered a decimal point, normalize and clamp
+    // Helper to truncate (not round) to the requested decimal places
+    const toFixedTruncate = (num) => {
+      const factor = Math.pow(10, decimals);
+      const truncated = Math.floor(num * factor) / factor;
+      return truncated.toFixed(decimals);
+    };
+
+    // If user already entered a decimal point, normalize, optionally scale down, and clamp
     if (sanitized.includes('.')) {
-      const num = parseFloat(sanitized);
+      let num = parseFloat(sanitized);
       if (isNaN(num)) return '';
+
+      // Example cases for FAT:
+      // 61.  -> 61.0 / 10 = 6.10
+      // 61.5 -> 61.5 / 10 = 6.15
       if (num > maxValue) {
-        if (onOverflow) onOverflow();
-        return '';
+        const divided = num / 10;
+        if (divided > maxValue) {
+          if (onOverflow) onOverflow();
+          return '';
+        }
+        num = divided;
       }
-      return num.toFixed(decimals);
+
+      return toFixedTruncate(num);
     }
 
     const digits = sanitized.replace(/\D/g, '');
     if (!digits) return '';
+    const length = digits.length;
 
-    // Single digit -> D.0 / D.00
-    if (digits.length === 1) {
+    // Single digit -> D.00, with special handling for fat/SNF when the digit is 1
+    if (length === 1) {
       const num = parseFloat(digits);
       if (isNaN(num)) return '';
       if (num > maxValue) {
         if (onOverflow) onOverflow();
         return '';
       }
-      return num.toFixed(decimals);
+
+      // Special-case: for fat/SNF inputs (max 15, 2 decimals), treat a lone "1"
+      // as the minimum allowed value 10.00.
+      if (num === 1 && maxValue === 15 && decimals === 2) {
+        const minVal = 10;
+        if (minVal > maxValue) {
+          if (onOverflow) onOverflow();
+          return '';
+        }
+        return toFixedTruncate(minVal);
+      }
+
+      return toFixedTruncate(num);
     }
 
-    // Use last digit as decimal place: 70 -> 7.0, 235 -> 23.5, 120 -> 12.0
-    const intPart = digits.slice(0, digits.length - 1);
-    const fracPart = digits.slice(-1);
+    const isLeadingOneFatSnf = digits[0] === '1' && maxValue === 15 && decimals === 2;
+
+    if (isLeadingOneFatSnf) {
+      // Desired mappings for leading "1" in fat/SNF (max 15, 2 decimals):
+      // 1   -> 10.00  (handled above in length === 1 branch)
+      // 12  -> 12.00
+      // 134 -> 13.40
+      // 1345 -> 13.45
+
+      let num;
+
+      if (length === 2) {
+        // Two digits (10–15) -> treat as whole number with .00
+        num = parseInt(digits, 10);
+      } else {
+        // Three or more digits: use first two digits as integer part,
+        // subsequent digits as decimal part (max 2 decimals).
+        const intPartStr = digits.slice(0, 2);
+        const decimalDigits = digits.slice(2, 4); // up to 2 decimal digits
+        num = parseFloat(`${intPartStr}.${decimalDigits}`);
+      }
+
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+
+      return toFixedTruncate(num);
+    }
+
+    // For CLR (max 36, 2 decimals):
+    //  - 24   -> 24.00
+    //  - 239  -> 23.90
+    //  - 3025 -> 30.25
+    if (maxValue === 36 && decimals === 2) {
+      let num;
+
+      if (length === 2) {
+        // Two digits are treated as whole number with .00
+        num = parseInt(digits, 10);
+      } else if (length === 3) {
+        // Three digits: first two as integer, last digit as decimal (e.g. 239 -> 23.9)
+        const intPartStr = digits.slice(0, 2);
+        const decimalDigits = digits.slice(2); // single digit
+        num = parseFloat(`${intPartStr}.${decimalDigits}`);
+      } else {
+        // Four or more digits: last TWO digits as decimal (e.g. 3025 -> 30.25)
+        const intPart = digits.slice(0, length - 2);
+        const fracPart = digits.slice(-2);
+        num = parseFloat(`${intPart}.${fracPart}`);
+      }
+
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return toFixedTruncate(num);
+    }
+
+    // Original behavior for non-leading-1, non-CLR values:
+    // Two digits: last digit as decimal (e.g. 61 -> 6.10)
+    if (length === 2) {
+      const intPart = digits.slice(0, 1);
+      const fracPart = digits.slice(1);
+      let num = parseFloat(`${intPart}.${fracPart}`);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return toFixedTruncate(num);
+    }
+
+    // Three or more digits: last TWO digits as decimal (e.g. 654 -> 6.54, 3025 -> 30.25)
+    const intPart = digits.slice(0, length - 2);
+    const fracPart = digits.slice(-2);
     let num = parseFloat(`${intPart}.${fracPart}`);
     if (isNaN(num)) return '';
     if (num > maxValue) {
       if (onOverflow) onOverflow();
       return '';
     }
-    return num.toFixed(decimals);
+    return toFixedTruncate(num);
   };
 
   const scheduleFatFormatting = () => {
     if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
     fatFormatTimeoutRef.current = setTimeout(() => {
       setFatPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('fat limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('fat limit error'))
       );
     }, 2000);
   };
@@ -352,7 +470,7 @@ const CollectionScreen = ({ navigation }) => {
     if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
     snfFormatTimeoutRef.current = setTimeout(() => {
       setSnfPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('snf limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('snf limit error'))
       );
     }, 2000);
   };
@@ -543,8 +661,8 @@ const CollectionScreen = ({ navigation }) => {
           const liters = parseFloat(weight);
           const rawKg = liters * 1.02;
           const weightKg = parseFloat(rawKg.toFixed(2));
-          const amount = (weightKg * milkRate).toFixed(3);
-          const solidWeight = (amount / milkRate).toFixed(3);
+          const amount = (liters * milkRate).toFixed(3);
+          const solidWeight = weightKg.toFixed(3);
 
           const collectionData = {
             collection_time: selectedTime.toLowerCase(),
@@ -579,7 +697,7 @@ const CollectionScreen = ({ navigation }) => {
         const formattedFat = formatWithTrailingDecimal(
           fatPercent,
           15.0,
-          1,
+          2,
           () => triggerInputLimitPopup('fat limit error')
         );
         if (!formattedFat) {
@@ -601,7 +719,7 @@ const CollectionScreen = ({ navigation }) => {
           const formattedSnf = formatWithTrailingDecimal(
             snfPercent,
             15.0,
-            1,
+            2,
             () => triggerInputLimitPopup('snf limit error')
           );
           if (!formattedSnf) {
@@ -832,9 +950,27 @@ const CollectionScreen = ({ navigation }) => {
   const isFlatRateMode = isFlatRateType(tempRateType);
   const isKgOnlyMode = tempRateType === 'kg_only';
   const isLitersOnlyMode = tempRateType === 'liters_only';
+  const isClrMode = !isFlatRateMode && selectedRadios.clr;
+  const isSnfMode = !isFlatRateMode && selectedRadios.snf;
+
+  // Normalize CLR without triggering overflow popups, to validate single-digit restriction
+  const normalizedClr = isClrMode
+    ? formatWithTrailingDecimal(clr, 36.0, 2)
+    : '';
+
+  const isClrInvalid =
+    isClrMode && (
+      !normalizedClr ||
+      isNaN(parseFloat(normalizedClr)) ||
+      parseFloat(normalizedClr) < 10
+    );
+
   const isNextDisabled = isFlatRateMode
     ? !weight
-    : (!weight || !fatPercent || !snfPercent);
+    : (!weight ||
+       !fatPercent ||
+       (isSnfMode && !snfPercent) ||
+       (isClrMode && isClrInvalid));
 
   // Add this component for the preview table
   const PreviewTable = ({ navigation }) => {
@@ -1359,7 +1495,7 @@ const CollectionScreen = ({ navigation }) => {
               <View style={[styles.inputGroup, { marginLeft: 12 }]}>
                 <View style={styles.labelWithRadio}>
                   <View style={{ width: 20 }} /> {/* This creates the same spacing as radio button */}
-                  <Text style={styles.inputLabel}>Fat %</Text>
+                  <Text style={[styles.inputLabel, isFlatRateMode && styles.disabledLabel]}>Fat %</Text>
                 </View>
                 <TextInput
                   style={[
@@ -1376,7 +1512,7 @@ const CollectionScreen = ({ navigation }) => {
                       formatWithTrailingDecimal(
                         current,
                         15.0,
-                        1,
+                        2,
                         () => triggerInputLimitPopup('Fat%', '15.0')
                       )
                     );
@@ -1385,7 +1521,7 @@ const CollectionScreen = ({ navigation }) => {
                   onChangeText={handleFatPercentInput}
                   keyboardType="decimal-pad"
                   editable={!isFlatRateMode}
-                  placeholder="0.0"
+                  placeholder="0.00"
                   placeholderTextColor="#B0B0B0"
                 />
                 {errors.fatPercent && <Text style={styles.errorText}>{errors.fatPercent}</Text>}
@@ -1417,14 +1553,14 @@ const CollectionScreen = ({ navigation }) => {
                       formatWithTrailingDecimal(
                         current,
                         15.0,
-                        1,
+                        2,
                         () => triggerInputLimitPopup('SNF%', '15.0')
                       )
                     );
                   }}
                   value={snfPercent}
                   onChangeText={handleSnfPercentInput}
-                  placeholder="0.0"
+                  placeholder="0.00"
                   placeholderTextColor="#B0B0B0"
                   keyboardType="decimal-pad"
                   editable={selectedRadios.snf}
@@ -1462,7 +1598,7 @@ const CollectionScreen = ({ navigation }) => {
                   }}
                   value={clr}
                   onChangeText={handleClrInput}
-                  placeholder="0.00"
+                  placeholder="00.00"
                   placeholderTextColor="#B0B0B0"
                   keyboardType="decimal-pad"
                   editable={selectedRadios.clr}
@@ -1792,7 +1928,7 @@ const CollectionScreen = ({ navigation }) => {
                       <View style={styles.previewRow}>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Fat %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(previewData.fat_percentage).toFixed(1)}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(previewData.fat_percentage).toFixed(2)}</Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>SNF %</Text>
@@ -1812,7 +1948,7 @@ const CollectionScreen = ({ navigation }) => {
                       <View style={styles.previewRow}>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>CLR</Text>
-                          <Text style={styles.previewValue}>{previewData.clr ? parseFloat(previewData.clr).toFixed(1) : '-'}</Text>
+                          <Text style={styles.previewValue}>{previewData.clr ? parseFloat(previewData.clr).toFixed(2) : '-'}</Text>
                         </View>
                         <View style={styles.previewItem}>
                           <BaseSnfSelector />
@@ -1829,7 +1965,7 @@ const CollectionScreen = ({ navigation }) => {
                     </View>
                     <View style={styles.previewRow}>
                       <Text style={styles.previewLabel}>Avg. Rate</Text>
-                      <Text style={styles.previewValue}>₹{(parseFloat(previewData.amount) / parseFloat(previewData.kg)).toFixed(2)}</Text>
+                      <Text style={styles.previewValue}>₹{calculateAverageRate(previewData)}</Text>
                     </View>
                     <View style={styles.previewRow}>
                       <Text style={styles.previewLabel}>Amount</Text>
@@ -2822,7 +2958,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    minWidth: 80,  // Ensure consistent width for label area
+    width: 80,  // Fix width so label area doesn't grow differently on some devices
   },
   inputWrapper: {
     flex: 1,
@@ -4003,8 +4139,6 @@ const styles = StyleSheet.create({
 });
 
 export default CollectionScreen;
-
-
 
 
 

@@ -22,6 +22,7 @@ import * as Sharing from 'expo-sharing';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { Linking } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CustomerReportScreen = ({ route }) => {
   const { customerId, customerName, customer_id } = route.params;

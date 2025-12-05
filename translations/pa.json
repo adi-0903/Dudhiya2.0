@@ -35,9 +35,9 @@
     "address": "ਪਤਾ",
     "cancel": "ਰੱਦ ਕਰੋ",
     "save": "ਸੰਭਾਲੋ",
-    "customer details": "ਗਾਹਕ ਦੀ ਜਾਣਕਾਰੀ",
+    "customer details": "ਸਪਲੇਯਰ ਦੀ ਜਾਣਕਾਰੀ",
     "update": "ਅੱਪਡੇਟ ਕਰੋ",
-    "edit customer": "ਗਾਹਕ ਸੋਧੋ",
+    "edit customer": "ਸਪਲੇਯਰ ਸੋਧੋ",
     "view report": "ਰਿਪੋਰਟ ਵੇਖੋ",
     "collection reports": "ਕਲੈਕਸ਼ਨ ਰਿਪੋਰਟ",
     "report": "ਰਿਪੋਰਟ",
@@ -91,7 +91,7 @@
     "clr conversion factor": "CLR ਰੂਪਾਂਤਰਣ ਕਾਰਕ",
     "clr conversion description": "CLR ਤੋਂ SNF ਫਾਰਮੂਲੇ ਵਿੱਚ ਵਰਤੇ ਜਾਣ ਵਾਲੇ ਰੂਪਾਂਤਰਣ ਕਾਰਕ ਨੂੰ ਚੁਣੋ",
     "fat snf ratio": "ਫੈਟ/SNF ਅਨੁਪਾਤ",
-    "search customers": "ਗਾਹਕ ਲੱਭੋ",
+    "search customers": "ਸਪਲੇਯਰ ਲੱਭੋ",
     "search by id, name, phone": "ਆਈਡੀ, ਨਾਂ, ਫੋਨ ਨਾਲ ਲੱਭੋ",
     "add": "ਜੋੜੋ",
     "select date": "ਮਿਤੀ ਚੁਣੋ",
@@ -137,7 +137,7 @@
     "purchase report - day wise": "ਖਰੀਦ ਰਿਪੋਰਟ - ਦਿਨ ਅਨੁਸਾਰ",
     "view collection by date": "ਮਿਤੀ ਅਨੁਸਾਰ ਸੰਗ੍ਰਹਿ ਵੇਖੋ",
     "purchase summary - person wise": "ਖਰੀਦ ਸੰਖੇਪ - ਵਿਅਕਤੀ ਅਨੁਸਾਰ",
-    "view collections by customer": "ਗਾਹਕ ਦੁਆਰਾ ਸੰਗ੍ਰਹਿ ਵੇਖੋ",
+    "view collections by customer": "ਸਪਲੇਯਰ ਦੁਆਰਾ ਸੰਗ੍ਰਹਿ ਵੇਖੋ",
     "select date range": "ਮਿਤੀ ਰੇਂਜ ਚੁਣੋ",
     "generate report": "ਰਿਪੋਰਟ ਬਣਾਓ",
     "purchase summary report": "ਖਰੀਦ ਸੰਖੇਪ ਰਿਪੋਰਟ",
@@ -181,7 +181,7 @@
     "Copy": "ਕੋਪੀ ਕਰੋ",
     "copied": "ਕੋਪੀ ਹੋ ਗਿਆ",
     
-    "enter customer name": "ਗਾਹਕ ਨਾਂ ਦਰਜ ਕਰੋ",
+    "enter customer name": "ਸਪਲੇਯਰ ਨਾਂ ਦਰਜ ਕਰੋ",
     "enter father's name": "ਪਿਤਾ ਦਾ ਨਾਂ ਦਰਜ ਕਰੋ",
     "enter phone number": "ਫੋਨ ਨੰਬਰ ਦਰਜ ਕਰੋ",
     "enter village name": "ਪਿੰਡ ਦਾ ਨਾਂ ਦਰਜ ਕਰੋ",
@@ -257,15 +257,15 @@
     "share this code with friends and earn ₹100 when they use it! your friend will also get ₹50!": "ਇਸ ਕੋਡ ਨੂੰ ਦੋਸਤਾਂ ਨਾਲ ਸਾਂਝਾ ਕਰੋ ਅਤੇ ਜਦੋਂ ਉਹ ਇਸਨੂੰ ਵਰਤਦੇ ਹਨ ਤਾਂ ਤੁਸੀਂ ₹100 ਕਮਾਓਗੇ! ਤੁਹਾਡੇ ਦੋਸਤ ਨੂੰ ਵੀ ₹50 ਮਿਲਣਗੇ!",
 
     "duplicate collection": "ਡੁਪਲੀਕੇਟ ਸੰਗ੍ਰਹਿ",
-    "an identical collection already exists for this customer": "ਇਹ ਗਾਹਕ ਲਈ ਇਕ ਸਮਰੂਪ ਸੰਗ੍ਰਹਿ ਪਹਿਚਾਵੀ ਹੈ",
+    "an identical collection already exists for this customer": "ਇਹ ਸਪਲੇਯਰ ਲਈ ਇਕ ਸਮਰੂਪ ਸੰਗ੍ਰਹਿ ਪਹਿਚਾਵੀ ਹੈ",
     "clear & start new": "ਸਾਫ਼ ਅਤੇ ਨਵੀਂ ਸ਼ੁਰੂ ਕਰੋ",
     "dismiss": "ਛੱਡੋ",
 
-    "customer required": "ਗਾਹਕ ਆਵਸ਼ਯਕ",
-    "please select a customer before proceeding.": "ਕਿਰਪਾ ਕਰਕੇ ਅੱਗੇ ਵਧਣ ਤੋਂ ਪਹਿਲਾਂ ਇੱਕ ਗਾਹਕ ਚੁਣੋ।",
+    "customer required": "ਸਪਲੇਯਰ ਆਵਸ਼ਯਕ",
+    "please select a customer before proceeding.": "ਕਿਰਪਾ ਕਰਕੇ ਅੱਗੇ ਵਧਣ ਤੋਂ ਪਹਿਲਾਂ ਇੱਕ ਸਪਲੇਯਰ ਚੁਣੋ।",
     "show collections": "ਸੰਗ੍ਰਹਿ ਦੇਖੋ",
 
-    "invalid customer id": "ਗਾਹਕ ਆਈਡੀ ਅਮਾਨਵੀ",
+    "invalid customer id": "ਸਪਲੇਯਰ ਆਈਡੀ ਅਮਾਨਵੀ",
     "no data found for selected date range": "ਚੁਣੇ ਗਏ ਤਿਥੀ ਸੀਮਾ ਲਈ ਡੇਟਾ ਨਹੀਂ ਮਿਲਿਆ",
     "file not found. please generate the report again.": "ਫ਼ਾਇਲ ਨਹੀਂ ਮਿਲੀ। ਕਿਰਪਾ ਕਰਕੇ ਰਿਪੋਰਟ ਫ਼ਰਤ ਉਤਪਾਦਨ ਕਰੋ।",
     "sharing is not available on this device": "ਸਾਝਾ ਨਹੀਂ ਹੈ ਇਹ ਡਿਵਾਈਸ ਤੇ",
@@ -349,6 +349,9 @@
     "Refund Policy Description": "ਅਣਵਰਤੇ ਵਾਲਿਟ ਬੈਲੇਂਸ ਦੀ ਵਾਪਸੀ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕਦੀ, ਪਰ ਵਰਤੇ ਜਾਣ ਤੱਕ ਵੈਧ ਰਹਿੰਦਾ ਹੈ। ਵਿਸ਼ੇਸ਼ ਮਾਮਲਿਆਂ ਲਈ ਸਹਾਇਤਾ ਨਾਲ ਸੰਪਰਕ ਕਰੋ।",
 
     "wallet system guide": "ਵੱਲਟ ਸਿਸਟਮ ਗਾਇਡ",
+    "wallet fee title": "ਪੈਸੇ ਕੱਟਣ ਦਾ ਤਰੀਕਾ",
+    "wallet fee description": "ਹਰ ਦੁੱਧ ਕਲੈਕਸ਼ਨ 'ਤੇ, ਪ੍ਰਤੀ ਕਿਲੋ {{rate}} ਰੁਪਏ ਤੁਹਾਡੇ ਵਾਲਿਟ ਵਿਚੋਂ ਕਲੈਕਸ਼ਨ ਫੀਸ ਵਜੋਂ ਕੱਟੇ ਜਾਂਦੇ ਹਨ।",
+    "wallet fee description disabled": "ਫਿਲਹਾਲ ਦੁੱਧ ਕਲੈਕਸ਼ਨਾਂ ਲਈ ਤੁਹਾਡੇ ਵਾਲਿਟ ਵਿਚੋਂ ਕੋਈ ਕਲੈਕਸ਼ਨ ਫੀਸ ਨਹੀਂ ਕੱਟੀ ਜਾ ਰਹੀ।",
     "learn wallet system": "ਜਾਣੋ ਕਿ ਸਾਡਾ ਵਾਲਿਟ ਸਿਸਟਮ ਕਿਵੇਂ ਕੰਮ ਕਰਦਾ ਹੈ ਅਤੇ ਆਪਣੇ ਦੁਧੀਆ ਐਪ ਅਨੁਭਵ ਦਾ ਵੱਧ ਤੋਂ ਵੱਧ ਲਾਭ ਉਠਾਓ",
 
     "need help?": "ਮਦਦ ਲੋਓ",
@@ -405,6 +408,8 @@
     "view pro-rata report": "ਪ੍ਰੋ-ਰਾਟਾ ਰਿਪੋਰਟ ਦੇਖੋ",
     "pro-rata": "ਪ੍ਰੋ-ਰਾਟਾ",
     "how to use this app?": "ਇਹ ਐਪ ਕਿਵੇਂ ਵਰਤਣਾ ਹੈ?",
+    "how to add collections": "ਕਲੈਕਸ਼ਨ ਕਿਵੇਂ ਜੋੜਣੇ ਹਨ?",
+    "how to use wallet": "ਵਾਲਟ ਕਿਵੇਂ ਵਰਤਣਾ ਹੈ?",
     "how to generate reports?": "ਰਿਪੋਰਟਾਂ ਕਿਵੇਂ ਬਣਾਉਣੀਆਂ?",
     "youtube channel": "ਯੂਟਿਊਬ ਚੈਨਲ",
     "use dudhiya on the web": "ਵੈੱਬ 'ਤੇ ਦੁਧੀਆ ਵਰਤੋ",
@@ -458,7 +463,11 @@
     "recharge": "ਰੀਚਾਰਜ",
     "in wallet": "ਵਾਲਿਟ 'ਚ",
     "bonus will be credited instantly": "ਬੋਨਸ ਤੁਰੰਤ ਜਮ੍ਹਾਂ ਹੋ ਜਾਵੇਗਾ",
-    "got it": "ਸਮਝ ਗਿਆ"
+    "got it": "ਸਮਝ ਗਿਆ",
+    "slow internet title": "ਇੰਟਰਨੈੱਟ ਹੌਲੀ ਹੋ ਸਕਦਾ ਹੈ",
+    "slow internet message": "ਕੁਝ ਕੰਮ ਆਮ ਤੋਂ ਵੱਧ ਸਮਾਂ ਲੈ ਸਕਦੇ ਹਨ।",
+    "no internet connection title": "ਤੁਸੀਂ ਇੰਟਰਨੈੱਟ ਨਾਲ ਜੁੜੇ ਹੋਏ ਨਹੀਂ ਹੋ",
+    "no internet connection message": "ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਇੰਟਰਨੈੱਟ ਕਨੈਕਸ਼ਨ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
   }
 
 }

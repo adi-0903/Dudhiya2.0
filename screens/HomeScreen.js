@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Share, Modal, Linking, Alert, Clipboard, ScrollView, ActivityIndicator, RefreshControl, Image, Animated, Easing, Dimensions } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { getDairyInfo, getWalletBalance, getUserInfo, getCurrentMarketPrice, getWalletTransactions } from '../services/api';
 import BottomNav from '../components/BottomNav';
 import UpdateService from '../utils/updateService';
+import HowToUseApp from '../components/HowToUseApp';
 
 const LANGUAGES = {
   'en': 'English',
@@ -17,6 +17,7 @@ const LANGUAGES = {
 
 const HomeScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const { t, i18n } = useTranslation();
   const [dairyName, setDairyName] = useState('');
   const [currentLanguage, setCurrentLanguage] = useState('');
@@ -40,8 +41,6 @@ const HomeScreen = () => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const textWidth = useRef(0);
   const screenWidth = Dimensions.get('window').width;
-  const howToVideoRef = useRef(null);
-  const [showHowToModal, setShowHowToModal] = useState(false);
 
   const isFlatRateType =
     dairyInfo?.rate_type === 'kg_only' || dairyInfo?.rate_type === 'liters_only';
@@ -304,13 +303,6 @@ const HomeScreen = () => {
 
   const handleCalculatorPress = () => {
     navigation.navigate('MilkCalculator');
-  };
-
-  const closeHowToModal = async () => {
-    try {
-      await howToVideoRef.current?.pauseAsync();
-    } catch (e) {}
-    setShowHowToModal(false);
   };
 
   // Set up the scrolling animation
@@ -626,16 +618,7 @@ const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* How to use button on its own line */}
-            {/*<View style={styles.howToContainer}>
-              <TouchableOpacity 
-                style={[styles.linkButton, styles.howToButton]}
-                onPress={() => setShowHowToModal(true)}
-              >
-                <Icon name="play-circle" size={28} color="#0D47A1" />
-                <Text style={[styles.linkText, styles.howToButtonText]}>{t('how to use this app?')}</Text>
-              </TouchableOpacity>
-            </View>*/}
+            <HowToUseApp autoOpen={route?.params?.autoOpenHowTo} />
           </View>
         </View>
       </ScrollView>
@@ -680,43 +663,6 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* How-To Video Modal */}
-      <Modal
-        visible={showHowToModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={closeHowToModal}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeHowToModal}
-        >
-          <TouchableOpacity 
-            style={styles.howToModalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <TouchableOpacity 
-              style={styles.closeIconButton}
-              onPress={closeHowToModal}
-            >
-              <Icon name="close" size={24} color="#666" />
-            </TouchableOpacity>
-
-            <Text style={styles.howToTitle}>{t('how to use this app?')}</Text>
-            <Video
-              ref={howToVideoRef}
-              style={styles.howToVideo}
-              source={require('../assets/Dudhiya-welcome.mp4')}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
-              isLooping={false}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
 
       <Modal
         visible={showHelpModal}

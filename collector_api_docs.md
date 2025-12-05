@@ -408,8 +408,9 @@ Key logic / validations:
   - composition: `fat_percentage`, `snf_percentage`, etc.
 - `base_snf_percentage` must be **between 8.0 and 9.5** (inclusive). Otherwise returns `400`.
 - Wallet-based collection fee check:
-  - Reads `settings.COLLECTION_FEE` (if `ENABLED`), with `PER_KG_RATE`.
-  - Calculates `required_balance = PER_KG_RATE * kg`.
+  - Reads `settings.COLLECTION_FEE` to check if fee is `ENABLED`.
+  - Uses dynamic per-kg rate from `CollectionFeeConfig` model (falling back to `settings.COLLECTION_FEE["PER_KG_RATE"]` if no config exists).
+  - Calculates `required_balance = per_kg_rate * kg`.
   - If wallet balance is insufficient, returns `400` with details.
 - If no wallet exists for user, returns `400`.
 - Duplicate prevention:
@@ -785,7 +786,37 @@ with appropriate status (`400` or `500`) depending on the view.
 
 ---
 
-## 11. Summary of Endpoints (Relative Paths)
+## 11. Collection Fee Config API
+
+**Router basename**: `collection-fee-config` 					  -> `collection-fee-config/`
+
+Viewset: `CollectionFeeConfigViewSet` (read-only list endpoint).
+
+- **URL**: `collection-fee-config/`
+- **Method**: `GET`
+- **Auth**: Required (`IsAuthenticated`)
+- **Description**: Returns current collection fee configuration used when validating and deducting collection fees from wallet.
+
+**Response 200 (example)**
+
+```json
+{
+  "per_kg_rate": "0.024",
+  "enabled": true,
+  "description": "Collection fee based on weight"
+}
+```
+
+Notes:
+
+- `per_kg_rate` comes from the singleton `CollectionFeeConfig` model.
+- If no `CollectionFeeConfig` row exists yet, `per_kg_rate` falls back to `settings.COLLECTION_FEE["PER_KG_RATE"]`.
+- `enabled` and `description` are read from `settings.COLLECTION_FEE`.
+- This endpoint is **read-only**; configuration is meant to be changed only via Django admin.
+
+---
+
+## 12. Summary of Endpoints (Relative Paths)
 
 > Replace `<base>` with your actual app prefix, e.g. `/api/collector/`.
 
@@ -859,3 +890,6 @@ with appropriate status (`400` or `500`) depending on the view.
 
 - **YouTube link (public)**
   - `GET <base>/youtube-link/youtube-link/`
+
+- **Collection fee config**
+  - `GET <base>/collection-fee-config/`

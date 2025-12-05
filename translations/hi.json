@@ -18,7 +18,7 @@
     "wallet": "वॉलेट",
     "add money": "रिचार्ज करें",
 
-    "enter customer name": "ग्राहक नाम दर्ज करें",
+    "enter customer name": "सप्लायर नाम दर्ज करें",
     "enter father's name": "पिता का नाम दर्ज करें",
     "enter phone number": "फ़ोन नंबर दर्ज करें",
     "enter village name": "गाँव नाम दर्ज करें",
@@ -36,9 +36,9 @@
     "address": "पता",
     "cancel": "रद्द करें",
     "save": "सेव करें",
-    "customer details": "ग्राहक विवरण",
+    "customer details": "सप्लायर विवरण",
     "update": "अपडेट करें",
-    "edit customer": "ग्राहक चेंज करें",
+    "edit customer": "सप्लायर चेंज करें",
     "view report": "रिपोर्ट देखें",
     "collection reports": "कलेक्शन रिपोर्ट",
     "report": "रिपोर्ट",
@@ -95,7 +95,7 @@
     "clr conversion factor": "CLR रूपांतरण कारक",
     "clr conversion description": "CLR से SNF फॉर्मूले में उपयोग किया जाने वाला रूपांतरण कारक चुनें",
     "fat snf ratio": "फैट/SNF अनुपात",
-    "search customers": "ग्राहक खोजें",
+    "search customers": "सप्लायर खोजें",
     "search by id, name, phone": "आईडी, नाम, फ़ोन से खोजें",
     "add": "जोड़ें",
     "select date": "तारीख चुनें",
@@ -141,7 +141,7 @@
     "purchase report - day wise": "खरीद रिपोर्ट - दिन अनुसार",
     "view collection by date": "तारीख के अनुसार संग्रह देखें",
     "purchase summary - person wise": "खरीद समरी - व्यक्ति अनुसार",
-    "view collections by customer": "ग्राहक के अनुसार कलेक्शन देखें",
+    "view collections by customer": "सप्लायर के अनुसार कलेक्शन देखें",
     "select date range": "तिथि सीमा चुनें",
     "generate report": "रिपोर्ट उत्पन्न करें",
     "purchase report": "खरीद रिपोर्ट",
@@ -151,7 +151,7 @@
     "amount": "राशि",
     "supplier bill": "सप्लायर बिल",
     "view individual supplier bills": "व्यक्तिगत सप्लायर बिल्स देखें",
-    "add new customers": "नया ग्राहक जोड़ें",
+    "add new customers": "नया सप्लायर जोड़ें",
     "add new": "नया जोड़ें",
     "calculator": "कैलकुलेटर",
     "milk rate calculations": "दूध रेट गणनाएँ",
@@ -281,15 +281,15 @@
     "share this code with friends and earn ₹100 when they use it! your friend will also get ₹50!": "इस कोड को अपने दोस्तों के साथ शेयर करें और जब वे इसका इस्तेमाल करेंगे तो आपको ₹100 मिलेंगे! आपके दोस्त को भी ₹50 मिलेंगे!",
 
     "duplicate collection": "डुप्लिकेट संग्रह",
-    "an identical collection already exists for this customer": "इस ग्राहक के लिए एक समरूप संग्रह पहले से मौजूद है",
+    "an identical collection already exists for this customer": "इस सप्लायर के लिए एक समरूप संग्रह पहले से मौजूद है",
     "clear & start new": "साफ़ और नया शुरू करें",
     "dismiss": "छोड़ें",
 
-    "customer required": "ग्राहक आवश्यक",
-    "please select a customer before proceeding.": "कृपया पहले ग्राहक चुनें",
+    "customer required": "सप्लायर आवश्यक",
+    "please select a customer before proceeding.": "कृपया पहले सप्लायर चुनें",
     "show collections": "संग्रह देखें",
 
-    "invalid customer id": "ग्राहक आईडी अमान्य",
+    "invalid customer id": "सप्लायर आईडी अमान्य",
     "no data found for selected date range": "चुने गए तिथि सीमा के लिए डेटा नहीं मिला",
     "file not found. please generate the report again.": "फ़ाइल नहीं मिली। कृपया रिपोर्ट फिर से उत्पन्न करें।",
     "sharing is not available on this device": "साझा नहीं है इस डिवाइस पर",
@@ -365,6 +365,9 @@
     "Refund Policy Description": "उपयोग न किए गए वॉलेट बैलेंस को वापस नहीं किया जा सकता है, लेकिन उपयोग किए जाने तक यह वैध रहता है। विशेष मामलों के लिए सपोर्ट टीम से संपर्क करें।",
 
     "wallet system guide": "वॉलेट सिस्टम गाइड",
+    "wallet fee title": "पैसा कटना कैसे होता है",
+    "wallet fee description": "हर दूध कलेक्शन पर, प्रति किलोग्राम {{rate}} रुपये वॉलेट से कलेक्शन फीस के रूप में काटे जाते हैं।",
+    "wallet fee description disabled": "फिलहाल दूध कलेक्शन के लिए आपके वॉलेट से कोई कलेक्शन फीस नहीं काटी जा रही है।",
     "learn wallet system": "जानें कि हमारा वॉलेट सिस्टम कैसे काम करता है और अपने दुधिया ऐप अनुभव का अधिकतम लाभ उठाएँ",
 
     "need help?": "मदद की जरूरत है?",
@@ -372,9 +375,9 @@
 
     "name and phone number are required": "नाम और फ़ोन नंबर आवश्यक हैं",
 
-    "customer updated successfully!": "ग्राहक सफलतापूर्वक अपडेट कर दिया गया है!",
+    "customer updated successfully!": "सप्लायर सफलतापूर्वक अपडेट कर दिया गया है!",
 
-    "customer added successfully!": "ग्राहक सफलतापूर्वक जोड़ा गया है!",
+    "customer added successfully!": "सप्लायर सफलतापूर्वक जोड़ा गया है!",
 
     "failed to update collection. this collection has already been edited 1 time.": "कलेक्शन अपडेट नहीं हो पाई। यह कलेक्शन पहले से ही एडिट कर दी गई है।",
 
@@ -420,6 +423,8 @@
     "view pro-rata report": "प्रो-राटा रिपोर्ट देखें",
     "pro-rata": "प्रो-राटा",
     "how to use this app?": "यह ऐप कैसे इस्तेमाल करें?",
+    "how to add collections": "कलेक्शन कैसे जोड़ें?",
+    "how to use wallet": "वॉलेट कैसे इस्तेमाल करें?",
     "how to generate reports?": "रिपोर्ट कैसे बनाएं?",
     "youtube channel": "यूट्यूब चैनल",
     "use dudhiya on the web": "वेब पर दूधिया का उपयोग करें",
@@ -474,6 +479,10 @@
     "recharge": "रिचार्ज",
     "in wallet": "वॉलेट में",
     "bonus will be credited instantly": "बोनस तुरंत जमा हो जाएगा",
-    "got it": "समझ गया"
+    "got it": "समझ गया",
+    "slow internet title": "इंटरनेट धीमा हो सकता है",
+    "slow internet message": "कुछ क्रियाओं में सामान्य से अधिक समय लग सकता है।",
+    "no internet connection title": "आप इंटरनेट से कनेक्ट नहीं हैं",
+    "no internet connection message": "कृपया अपना इंटरनेट कनेक्शन जांचें और दोबारा प्रयास करें।"
   }
 }

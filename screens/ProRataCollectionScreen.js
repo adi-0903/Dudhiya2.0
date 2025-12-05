@@ -14,7 +14,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
-  Dimensions
+  Dimensions,
+  Animated
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -115,6 +116,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
   const fatFormatTimeoutRef = useRef(null);
   const snfFormatTimeoutRef = useRef(null);
   const clrFormatTimeoutRef = useRef(null);
+  const rateChartHighlightAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     return () => {
@@ -339,6 +341,32 @@ const ProRataCollectionScreen = ({ navigation }) => {
   };
 
   const isRateChartSet = isValidThresholdList(fatStepUpThresholds) && isValidThresholdList(snfStepDownThresholds);
+
+  useEffect(() => {
+    if (!isRateChartSet) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(rateChartHighlightAnim, {
+            toValue: 0.5,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rateChartHighlightAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => {
+        animation.stop();
+        rateChartHighlightAnim.setValue(1);
+      };
+    } else {
+      rateChartHighlightAnim.setValue(1);
+    }
+  }, [isRateChartSet, rateChartHighlightAnim]);
 
   const addFatThreshold = () => {
     const arr = tempFatStepUpThresholds || [];
@@ -672,45 +700,150 @@ const ProRataCollectionScreen = ({ navigation }) => {
 
     const sanitized = (rawValue || '').replace(/[^0-9.]/g, '');
 
+    // Helper to truncate (not round) to the requested decimal places
+    const toFixedTruncate = (num) => {
+      const factor = Math.pow(10, decimals);
+      const truncated = Math.floor(num * factor) / factor;
+      return truncated.toFixed(decimals);
+    };
+
+    // If user already entered a decimal point, normalize, optionally scale down, and clamp
     if (sanitized.includes('.')) {
-      const num = parseFloat(sanitized);
+      let num = parseFloat(sanitized);
       if (isNaN(num)) return '';
+
+      // Example cases for FAT:
+      // 61.  -> 61.0 / 10 = 6.10
+      // 61.5 -> 61.5 / 10 = 6.15
       if (num > maxValue) {
-        if (onOverflow) onOverflow();
-        return '';
+        const divided = num / 10;
+        if (divided > maxValue) {
+          if (onOverflow) onOverflow();
+          return '';
+        }
+        num = divided;
       }
-      return num.toFixed(decimals);
+
+      return toFixedTruncate(num);
     }
 
     const digits = sanitized.replace(/\D/g, '');
     if (!digits) return '';
+    const length = digits.length;
 
-    if (digits.length === 1) {
+    // Single digit -> D.0 / D.00 (e.g. 6 -> 6.00), with special handling for fat/SNF when the digit is 1
+    if (length === 1) {
       const num = parseFloat(digits);
       if (isNaN(num)) return '';
       if (num > maxValue) {
         if (onOverflow) onOverflow();
         return '';
       }
-      return num.toFixed(decimals);
+
+      // For fat/SNF inputs (max 15, 2 decimals), treat a lone "1" as 10.00
+      if (num === 1 && maxValue === 15 && decimals === 2) {
+        const minVal = 10;
+        if (minVal > maxValue) {
+          if (onOverflow) onOverflow();
+          return '';
+        }
+        return toFixedTruncate(minVal);
+      }
+
+      return toFixedTruncate(num);
     }
 
-    const intPart = digits.slice(0, digits.length - 1);
-    const fracPart = digits.slice(-1);
+    const isLeadingOneFatSnf = digits[0] === '1' && maxValue === 15 && decimals === 2;
+
+    if (isLeadingOneFatSnf) {
+      // Fat/SNF leading-1 mappings (max 15, 2 decimals):
+      // 1   -> 10.00  (handled above)
+      // 12  -> 12.00
+      // 134 -> 13.40
+      // 1345 -> 13.45
+
+      let num;
+
+      if (length === 2) {
+        // Two digits (10–15) -> whole number with .00
+        num = parseInt(digits, 10);
+      } else {
+        // Three or more digits: first two as integer, next up to two as decimal
+        const intPartStr = digits.slice(0, 2);
+        const decimalDigits = digits.slice(2, 4);
+        num = parseFloat(`${intPartStr}.${decimalDigits}`);
+      }
+
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+
+      return toFixedTruncate(num);
+    }
+
+    // CLR-specific mappings (max 36, 2 decimals):
+    // 24  -> 24.00
+    // 239 -> 23.90
+    // 3025 -> 30.25
+    if (maxValue === 36 && decimals === 2) {
+      let num;
+
+      if (length === 2) {
+        // Two digits -> whole number with .00
+        num = parseInt(digits, 10);
+      } else if (length === 3) {
+        // Three digits: first two as integer, last digit as decimal (e.g. 239 -> 23.9)
+        const intPartStr = digits.slice(0, 2);
+        const decimalDigits = digits.slice(2);
+        num = parseFloat(`${intPartStr}.${decimalDigits}`);
+      } else {
+        // Four or more digits: last TWO digits as decimal (e.g. 3025 -> 30.25)
+        const intPart = digits.slice(0, length - 2);
+        const fracPart = digits.slice(-2);
+        num = parseFloat(`${intPart}.${fracPart}`);
+      }
+
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return toFixedTruncate(num);
+    }
+
+    // Fallback: original behavior for other fields
+    // Two digits: last digit as decimal (e.g. 61 -> 6.10)
+    if (length === 2) {
+      const intPart = digits.slice(0, 1);
+      const fracPart = digits.slice(1);
+      let num = parseFloat(`${intPart}.${fracPart}`);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+      return toFixedTruncate(num);
+    }
+
+    // Three or more digits: last TWO digits as decimal (e.g. 1267 -> 12.67, 3025 -> 30.25)
+    const intPart = digits.slice(0, length - 2);
+    const fracPart = digits.slice(-2);
     let num = parseFloat(`${intPart}.${fracPart}`);
     if (isNaN(num)) return '';
     if (num > maxValue) {
       if (onOverflow) onOverflow();
       return '';
     }
-    return num.toFixed(decimals);
+    return toFixedTruncate(num);
   };
 
   const scheduleFatFormatting = () => {
     if (fatFormatTimeoutRef.current) clearTimeout(fatFormatTimeoutRef.current);
     fatFormatTimeoutRef.current = setTimeout(() => {
       setFatPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('fat limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('fat limit error'))
       );
     }, 2000);
   };
@@ -719,7 +852,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
     if (snfFormatTimeoutRef.current) clearTimeout(snfFormatTimeoutRef.current);
     snfFormatTimeoutRef.current = setTimeout(() => {
       setSnfPercent((current) =>
-        formatWithTrailingDecimal(current, 15.0, 1, () => triggerInputLimitPopup('snf limit error'))
+        formatWithTrailingDecimal(current, 15.0, 2, () => triggerInputLimitPopup('snf limit error'))
       );
     }, 2000);
   };
@@ -923,7 +1056,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
         const formattedFat = formatWithTrailingDecimal(
           fatPercent,
           15.0,
-          1,
+          2,
           () => triggerInputLimitPopup('fat limit error')
         );
         if (!formattedFat) {
@@ -972,7 +1105,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
           const formattedSnf = formatWithTrailingDecimal(
             snfPercent,
             15.0,
-            1,
+            2,
             () => triggerInputLimitPopup('snf limit error')
           );
           if (!formattedSnf) {
@@ -1232,8 +1365,13 @@ const ProRataCollectionScreen = ({ navigation }) => {
       month: 'short',
       year: 'numeric'
     });
-    
+
     const timeDisplay = latestCollection.collection_time === 'morning' ? 'Morning' : 'Evening';
+
+    const fatPct = parseFloat(latestCollection.fat_percentage);
+    const snfPct = parseFloat(latestCollection.snf_percentage);
+    const baseSnfPct = parseFloat(latestCollection.base_snf_percentage);
+    const clrValue = latestCollection.clr != null ? parseFloat(latestCollection.clr) : NaN;
 
     return (
       <View>
@@ -1286,20 +1424,20 @@ const ProRataCollectionScreen = ({ navigation }) => {
               <Text style={styles.cellText}>{parseFloat(latestCollection.kg).toFixed(2)}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.fat_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{!isNaN(fatPct) ? fatPct.toFixed(2) : '-'}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.snf_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{!isNaN(snfPct) ? snfPct.toFixed(2) : '-'}</Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
-              <Text style={styles.cellText}>{parseFloat(latestCollection.base_snf_percentage).toFixed(1)}</Text>
+              <Text style={styles.cellText}>{!isNaN(baseSnfPct) ? baseSnfPct.toFixed(2) : '-'}</Text>
             </View>
-            <View style={[styles.cell, { flex: 1.2 }]}>
-              <Text style={styles.cellText}>{latestCollection.clr ? parseFloat(latestCollection.clr).toFixed(1) : '-'}</Text>
+            <View style={[styles.cell, { flex: 1.2 }]}> 
+              <Text style={styles.cellText}>{!isNaN(clrValue) ? clrValue.toFixed(2) : '-'}</Text>
             </View>
           </TouchableOpacity>
         </View>
-        
+
         <TouchableOpacity 
           style={styles.showCollectionsButton}
           onPress={() => navigation.navigate('GenerateProRataFullReportScreen')}
@@ -1808,7 +1946,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                     formatWithTrailingDecimal(
                       current,
                       15.0,
-                      1,
+                      2,
                       () => triggerInputLimitPopup('fat limit error')
                     )
                   );
@@ -1816,7 +1954,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 value={fatPercent}
                 onChangeText={handleFatPercentInput}
                 keyboardType="decimal-pad"
-                placeholder="0.0"
+                placeholder="0.00"
                 placeholderTextColor="#B0B0B0"
               />
               {errors.fatPercent && <Text style={styles.errorText}>{errors.fatPercent}</Text>}
@@ -1848,14 +1986,14 @@ const ProRataCollectionScreen = ({ navigation }) => {
                     formatWithTrailingDecimal(
                       current,
                       15.0,
-                      1,
+                      2,
                       () => triggerInputLimitPopup('snf limit error')
                     )
                   );
                 }}
                 value={snfPercent?.toString() || ''}
                 onChangeText={handleSnfPercentInput}
-                placeholder="0.0"
+                placeholder="0.00"
                 placeholderTextColor="#B0B0B0"
                 keyboardType="decimal-pad"
                 editable={selectedRadios.snf}
@@ -1893,7 +2031,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 }}
                 value={clr}
                 onChangeText={handleClrInput}
-                placeholder="0.00"
+                placeholder="00.00"
                 placeholderTextColor="#B0B0B0"
                 keyboardType="decimal-pad"
                 editable={selectedRadios.clr}
@@ -1904,27 +2042,29 @@ const ProRataCollectionScreen = ({ navigation }) => {
 
           {/* Rate Chart Settings Button and Next Button in same row */}
           <View style={[styles.measureRow, { justifyContent: 'space-between' }]}>
-            <TouchableOpacity 
-              style={[
-                styles.rateChartButton, 
-                !isRateChartSet && { backgroundColor: '#0D47A1' }
-              ]}
-              onPress={handleButtonPress(openRateChartModal)}
-            >
-              <Icon 
-                name="tune" 
-                size={18} 
-                color={isRateChartSet ? "#0D47A1" : "#FFFFFF"} 
-              />
-              <Text 
+            <Animated.View style={!isRateChartSet ? { opacity: rateChartHighlightAnim } : null}>
+              <TouchableOpacity 
                 style={[
-                  styles.rateChartButtonText, 
-                  !isRateChartSet && { color: '#FFFFFF' }
+                  styles.rateChartButton, 
+                  !isRateChartSet && { backgroundColor: '#0D47A1' }
                 ]}
+                onPress={handleButtonPress(openRateChartModal)}
               >
-                {isRateChartSet ? t('rate chart') : t('set rate chart')}
-              </Text>
-            </TouchableOpacity>
+                <Icon 
+                  name="tune" 
+                  size={18} 
+                  color={isRateChartSet ? "#0D47A1" : "#FFFFFF"} 
+                />
+                <Text 
+                  style={[
+                    styles.rateChartButtonText, 
+                    !isRateChartSet && { color: '#FFFFFF' }
+                  ]}
+                >
+                  {isRateChartSet ? t('rate chart') : t('set rate chart')}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
             
             <TouchableOpacity 
               style={[
@@ -2232,11 +2372,11 @@ const ProRataCollectionScreen = ({ navigation }) => {
                       <View style={styles.previewRow}>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Fat %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(previewData.fat_percentage).toFixed(1)}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(previewData.fat_percentage).toFixed(2)}</Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>SNF %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage)}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage).toFixed(2)}</Text>
                         </View>
                       </View>
                       <View style={styles.previewRow}>
@@ -2252,7 +2392,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                       <View style={styles.previewRow}>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>CLR</Text>
-                          <Text style={styles.previewValue}>{previewData.clr ? parseFloat(previewData.clr).toFixed(1) : '-'}</Text>
+                          <Text style={styles.previewValue}>{previewData.clr ? parseFloat(previewData.clr).toFixed(2) : '-'}</Text>
                         </View>
                         <View style={styles.previewItem}>
                           <BaseSnfSelector />
@@ -3609,7 +3749,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    minWidth: 80,  // Ensure consistent width for label area
+    width: 80,  // Fix width so label area doesn't grow differently on some devices
   },
   inputWrapper: {
     flex: 1,

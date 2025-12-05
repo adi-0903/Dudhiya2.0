@@ -235,6 +235,20 @@ const EditCollectionScreen = ({ route, navigation }) => {
   }, {});
 
   const isFlatRateType = (rateType) => rateType === 'kg_only' || rateType === 'liters_only';
+ 
+  const calculateAverageRate = (data) => {
+    if (!data) return '0.00';
+    const amount = parseFloat(data.amount);
+    if (!amount || Number.isNaN(amount)) return '0.00';
+
+    const divisor = data.measured === 'liters'
+      ? parseFloat(data.liters)
+      : parseFloat(data.kg);
+
+    if (!divisor || Number.isNaN(divisor)) return '0.00';
+
+    return (amount / divisor).toFixed(2);
+  };
   const isFlatRateMode = isFlatRateType(rateTypePickerValue);
   const isKgOnlyMode = rateTypePickerValue === 'kg_only';
   const isLitersOnlyMode = rateTypePickerValue === 'liters_only';
@@ -613,8 +627,8 @@ const EditCollectionScreen = ({ route, navigation }) => {
           const liters = parseFloat(formData.weight);
           const rawKg = liters * 1.02;
           const weightKg = parseFloat(rawKg.toFixed(2));
-          const amount = (weightKg * milkRate).toFixed(3);
-          const solidWeight = (amount / milkRate).toFixed(3);
+          const amount = (liters * milkRate).toFixed(3);
+          const solidWeight = weightKg.toFixed(3);
 
           console.log('Using customer ID for API:', formData.customer_id);
 
@@ -1492,8 +1506,8 @@ const EditCollectionScreen = ({ route, navigation }) => {
                 const parts = sanitizedText.split('.');
                 if (parts.length > 2) return;
                 
-                // Limit to one decimal place
-                if (parts[1] && parts[1].length > 1) return;
+                // Limit to two decimal places
+                if (parts[1] && parts[1].length > 2) return;
                 
                 // Check if value is between 1 and 15
                 const numValue = parseFloat(sanitizedText);
@@ -1543,8 +1557,8 @@ const EditCollectionScreen = ({ route, navigation }) => {
                 const parts = sanitizedText.split('.');
                 if (parts.length > 2) return;
                 
-                // Limit to one decimal place
-                if (parts[1] && parts[1].length > 1) return;
+                // Limit to two decimal places
+                if (parts[1] && parts[1].length > 2) return;
                 
                 // Check if value is between 1 and 15
                 const numValue = parseFloat(sanitizedText);
@@ -1784,7 +1798,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
                     <View style={styles.previewCard}>
                       <View style={styles.previewRow}>
                         <Text style={styles.previewLabel}>Avg. Rate</Text>
-                        <Text style={styles.previewValue}>₹{(parseFloat(previewData.amount) / parseFloat(previewData.kg)).toFixed(2)}</Text>
+                        <Text style={styles.previewValue}>₹{calculateAverageRate(previewData)}</Text>
                       </View>
                       <View style={styles.previewRow}>
                         <Text style={styles.previewLabel}>Amount</Text>
@@ -3086,7 +3100,8 @@ const styles = StyleSheet.create({
   changeRatesButtonContainer: {
     marginTop: 0,
     marginBottom: 15,
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   changeRatesButton: {
     flexDirection: 'row',
@@ -3102,7 +3117,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     minWidth: 150,
   },
   changeRatesButtonContent: {

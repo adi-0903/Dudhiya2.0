@@ -18,7 +18,7 @@
       "wallet": "ವ್ಯಾಲೆಟ್",
       "add money": "ಹಣ ಸೇರಿಸಿ",
   
-      "enter customer name": "ಗ್ರಾಹಕರ ಹೆಸರು ನಮೂದಿಸಿ",
+      "enter customer name": "ಸಪ್ಲಾಯರ್ ಹೆಸರು ನಮೂದಿಸಿ",
       "enter father's name": "ತಂದೆಯ ಹೆಸರು ನಮೂದಿಸಿ",
       "enter phone number": "ಫೋನ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ",
       "enter village name": "ಗ್ರಾಮದ ಹೆಸರು ನಮೂದಿಸಿ",
@@ -36,9 +36,9 @@
       "address": "ವಿಳಾಸ",
       "cancel": "ರದ್ದುಮಾಡಿ",
       "save": "ಉಳಿಸಿ",
-      "customer details": "ಗ್ರಾಹಕರ ವಿವರಗಳು",
+      "customer details": "ಸಪ್ಲಾಯರ್ ವಿವರಗಳು",
       "update": "ಅಪ್ಡೇಟ್ ಮಾಡಿ",
-      "edit customer": "ಗ್ರಾಹಕರನ್ನು ಸಂಪಾದಿಸಿ",
+      "edit customer": "ಸಪ್ಲಾಯರ್ನ್ನು ಸಂಪಾದಿಸಿ",
       "view report": "ವರದಿ ವೀಕ್ಷಿಸಿ",
       "collection reports": "ಸಂಗ್ರಹ ವರದಿಗಳು",
       "report": "ವರದಿ",
@@ -74,7 +74,7 @@
       "ok": "ಸರಿ",
   
       "view collections by date": "ದಿನಾಂಕದ ಪ್ರಕಾರ ಸಂಗ್ರಹಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
-      "view individual customer bills": "ವೈಯಕ್ತಿಕ ಗ್ರಾಹಕರ ಬಿಲ್ಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
+      "view individual customer bills": "ವೈಯಕ್ತಿಕ ಸಪ್ಲಾಯರ್ ಬಿಲ್ಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
       "no collections found": "ಯಾವುದೇ ಸಂಗ್ರಹಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
   
       "generate full report": "ಪೂರ್ಣ ವರದಿ ರಚಿಸಿ",
@@ -95,7 +95,7 @@
       "clr conversion factor": "CLR ಪರಿವರ್ತನೆ ಅಂಶ",
       "clr conversion description": "CLR ನಿಂದ SNF ಸೂತ್ರದಲ್ಲಿ ಬಳಸುವ ಪರಿವರ್ತನೆ ಅಂಶವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
       "fat snf ratio": "ಫ್ಯಾಟ್/SNF ಅನುಪಾತ",
-      "search customers": "ಗ್ರಾಹಕರನ್ನು ಹುಡುಕಿ",
+      "search customers": "ಸಪ್ಲಾಯರ್ನ್ನು ಹುಡುಕಿ",
       "search by id, name, phone": "ಐಡಿ, ಹೆಸರು, ಫೋನ್ ಮೂಲಕ ಹುಡುಕಿ",
       "add": "ಸೇರಿಸಿ",
       "select date": "ದಿನಾಂಕ ಆಯ್ಕೆಮಾಡಿ",
@@ -141,7 +141,7 @@
       "purchase report - day wise": "ಖರೀದಿ ವರದಿ - ದಿನವಾರು",
       "view collection by date": "ದಿನಾಂಕದ ಪ್ರಕಾರ ಸಂಗ್ರಹವನ್ನು ವೀಕ್ಷಿಸಿ",
       "purchase summary - person wise": "ಖರೀದಿ ಸಾರಾಂಶ - ವ್ಯಕ್ತಿವಾರು",
-      "view collections by customer": "ಗ್ರಾಹಕರ ಪ್ರಕಾರ ಸಂಗ್ರಹಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
+      "view collections by customer": "ಸಪ್ಲಾಯರ್ ಪ್ರಕಾರ ಸಂಗ್ರಹಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
       "select date range": "ದಿನಾಂಕ ಶ್ರೇಣಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
       "generate report": "ವರದಿ ರಚಿಸಿ",
       "purchase report": "ಖರೀದಿ ವರದಿ",
@@ -150,8 +150,8 @@
       "weight": "ತೂಕ",
       "amount": "ಮೊತ್ತ",
       "supplier bill": "ಸಪ್ಲಾಯರ್ ಬಿಲ್",
-      "view individual supplier bills": "ವೈಯಕ್ತಿಕ ಗ್ರಾಹಕರ ಬಿಲ್ಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
-      "add new customers": "ಹೊಸ ಗ್ರಾಹಕರನ್ನು ಸೇರಿಸಿ",
+      "view individual supplier bills": "ವೈಯಕ್ತಿಕ ಸಪ್ಲಾಯರ್ ಬಿಲ್ಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
+      "add new customers": "ಹೊಸ ಸಪ್ಲಾಯರ್ನ್ನು ಸೇರಿಸಿ",
       "add new": "ಹೊಸದನ್ನು ಸೇರಿಸಿ",
       "calculator": "ಕ್ಯಾಲ್ಕುಲೇಟರ್",
       "milk rate calculations": "ಹಾಲಿನ ದರ ಲೆಕ್ಕಾಚಾರಗಳು",
@@ -281,12 +281,12 @@
       "share this code with friends and earn ₹100 when they use it! your friend will also get ₹50!": "ಈ ಕೋಡ್ ಅನ್ನು ಸ್ನೇಹಿತರೊಂದಿಗೆ ಹಂಚಿಕೊಳ್ಳಿ ಮತ್ತು ಅವರು ಅದನ್ನು ಬಳಸಿದಾಗ ₹100 ಗಳಿಸಿ! ನಿಮ್ಮ ಸ್ನೇಹಿತರಿಗೂ ₹50 ಸಿಗುತ್ತದೆ!",
   
       "duplicate collection": "ನಕಲಿ ಸಂಗ್ರಹ",
-      "an identical collection already exists for this customer": "ಈ ಗ್ರಾಹಕರಿಗೆ ಈಗಾಗಲೇ ಒಂದೇ ರೀತಿಯ ಸಂಗ್ರಹ ಅಸ್ತಿತ್ವದಲ್ಲಿದೆ",
+      "an identical collection already exists for this customer": "ಈ ಸಪ್ಲಾಯರ್ಿಗೆ ಈಗಾಗಲೇ ಒಂದೇ ರೀತಿಯ ಸಂಗ್ರಹ ಅಸ್ತಿತ್ವದಲ್ಲಿದೆ",
       "clear & start new": "ತೆರವುಗೊಳಿಸಿ ಮತ್ತು ಹೊಸದನ್ನು ಪ್ರಾರಂಭಿಸಿ",
       "dismiss": "ವಜಾಗೊಳಿಸಿ",
   
-      "customer required": "ಗ್ರಾಹಕರು ಅಗತ್ಯವಿದೆ",
-      "please select a customer before proceeding.": "ಮುಂದುವರಿಯುವ ಮೊದಲು ದಯವಿಟ್ಟು ಗ್ರಾಹಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "customer required": "ಸಪ್ಲಾಯರ್ು ಅಗತ್ಯವಿದೆ",
+      "please select a customer before proceeding.": "ಮುಂದುವರಿಯುವ ಮೊದಲು ದಯವಿಟ್ಟು ಸಪ್ಲಾಯರ್ನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
       "show collections": "ಸಂಗ್ರಹಗಳನ್ನು ತೋರಿಸಿ",
   
       "invalid customer id": "ಅಮಾನ್ಯ ಗ್ರಾಹಕ ಐಡಿ",
@@ -365,6 +365,9 @@
       "Refund Policy Description": "ಬಳಕೆಯಾಗದ ವ್ಯಾಲೆಟ್ ಬಾಕಿಯನ್ನು ಮರುಪಾವತಿಸಲಾಗುವುದಿಲ್ಲ, ಆದರೆ ಅದನ್ನು ಬಳಸುವವರೆಗೆ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ. ವಿಶೇಷ ಸಂದರ್ಭಗಳಿಗಾಗಿ ಬೆಂಬಲ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.",
   
       "wallet system guide": "ವ್ಯಾಲೆಟ್ ಸಿಸ್ಟಮ್ ಗೈಡ್",
+      "wallet fee title": "ಹಣ ಕಡಿತ ಹೇಗೆ ನಡೆಯುತ್ತದೆ",
+      "wallet fee description": "ಪ್ರತಿ ಹಾಲಿನ ಸಂಗ್ರಹಕ್ಕೂ, ಪ್ರತಿ ಕೆಜಿಗೆ {{rate}} ರೂಪಾಯಿ ನಿಮ್ಮ ವ್ಯಾಲೆಟ್‌ನಿಂದ ಸಂಗ್ರಹ ಶುಲ್ಕವಾಗಿ ಕಡಿತಗೊಳ್ಳುತ್ತದೆ.",
+      "wallet fee description disabled": "ಪ್ರಸ್ತುತ ಹಾಲಿನ ಸಂಗ್ರಹಗಳಿಗೆ ನಿಮ್ಮ ವ್ಯಾಲೆಟ್‌ನಿಂದ ಯಾವುದೇ ಸಂಗ್ರಹ ಶುಲ್ಕ ಕಡಿತಗೊಳ್ಳುವುದಿಲ್ಲ.",
       "learn wallet system": "ನಮ್ಮ ವ್ಯಾಲೆಟ್ ವ್ಯವಸ್ಥೆಯು ಹೇಗೆ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತದೆ ಎಂಬುದನ್ನು ತಿಳಿಯಿರಿ ಮತ್ತು ನಿಮ್ಮ ದುಧಿಯಾ ಅಪ್ಲಿಕೇಶನ್ ಅನುಭವವನ್ನು ಗರಿಷ್ಠಗೊಳಿಸಿ",
   
       "need help?": "ಸಹಾಯ ಬೇಕೇ?",
@@ -372,9 +375,9 @@
   
       "name and phone number are required": "ಹೆಸರು ಮತ್ತು ಫೋನ್ ಸಂಖ್ಯೆ ಅಗತ್ಯವಿದೆ",
   
-      "customer updated successfully!": "ಗ್ರಾಹಕರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ!",
+      "customer updated successfully!": "ಸಪ್ಲಾಯರ್ನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ!",
   
-      "customer added successfully!": "ಗ್ರಾಹಕರನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸೇರಿಸಲಾಗಿದೆ!",
+      "customer added successfully!": "ಸಪ್ಲಾಯರ್ನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸೇರಿಸಲಾಗಿದೆ!",
   
       "failed to update collection. this collection has already been edited 1 time.": "ಸಂಗ್ರಹವನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ. ಈ ಸಂಗ್ರಹವನ್ನು ಈಗಾಗಲೇ 1 ಬಾರಿ ಸಂಪಾದಿಸಲಾಗಿದೆ.",
   
@@ -421,6 +424,8 @@
       "pro-rata": "ಪ್ರೊ-ರಾಟಾ",
 
       "how to use this app?": "ಈ ಆಪ್ ಅನ್ನು ಬಳಸುವುದು ಹೇಗೆ?",
+      "how to add collections": "ಸಂಗ್ರಹಗಳನ್ನು ಹೇಗೆ ಸೇರಿಸಬೇಕು?",
+      "how to use wallet": "ವಾಲೆಟ್ ಅನ್ನು ಹೇಗೆ ಬಳಸುವುದು?",
       "how to generate reports?": "ರಿಪೋರ್ಟ್‌ಗಳನ್ನು ಹೇಗೆ ತಯಾರಿಸಬೇಕು?",
       "youtube channel": "ಯೂಟ್ಯೂಬ್ ಚಾನೆಲ್",
       "use dudhiya on the web": "ವೆಬ್‌ನಲ್ಲಿ ದುಧಿಯಾ ಬಳಸಿರಿ",
@@ -475,6 +480,10 @@
       "recharge": "ರೀಚಾರ್ಜ್",
       "in wallet": "ವಾಲೆಟ್‌ನಲ್ಲಿ",
       "bonus will be credited instantly": "ಬೋನಸ್ ತಕ್ಷಣ ಜಮಾ ಆಗುತ್ತದೆ",
-      "got it": "ಅರ್ಥವಾಯಿತು"
+      "got it": "ಅರ್ಥವಾಯಿತು",
+      "slow internet title": "ಇಂಟರ್ನೆಟ್ ನಿಧಾನವಾಗಿರಬಹುದು",
+      "slow internet message": "ಕೆಲವು ಕ್ರಿಯೆಗಳು ಸಾಮಾನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚು ಸಮಯ ತೆಗೆದುಕೊಳ್ಳಬಹುದು.",
+      "no internet connection title": "ನೀವು ಇಂಟರ್ನೆಟ್‌ಗೆ ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ",
+      "no internet connection message": "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
     }
   }
