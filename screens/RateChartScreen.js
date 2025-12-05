@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getCurrentMarketPrice, setMarketPrice, getWalletBalance, getRateChart, updateRateChart } from '../services/api';
 import BottomNav from '../components/BottomNav';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const RateChartScreen = () => {
   const navigation = useNavigation();

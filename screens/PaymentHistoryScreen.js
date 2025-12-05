@@ -12,6 +12,7 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getWalletTransactions } from '../services/api';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PaymentHistoryScreen = () => {
   const navigation = useNavigation();
