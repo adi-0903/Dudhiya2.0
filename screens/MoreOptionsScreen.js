@@ -24,7 +24,7 @@ import HowToUseApp from '../components/HowToUseApp';
 
 const MoreOptionScreen = () => {
   const navigation = useNavigation();
-  const appVersion = Constants.manifest?.version || '1.0.6';
+  const appVersion = Constants.manifest?.version || '1.0.7';
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
