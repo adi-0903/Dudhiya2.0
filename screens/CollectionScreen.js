@@ -345,10 +345,84 @@ const CollectionScreen = ({ navigation }) => {
 
     const digits = sanitized.replace(/\D/g, '');
     if (!digits) return '';
+    const length = digits.length;
 
-    // Single digit -> D.0 / D.00 (e.g. 6 -> 6.00)
-    if (digits.length === 1) {
+    // Single digit -> D.00, with special handling for fat/SNF when the digit is 1
+    if (length === 1) {
       const num = parseFloat(digits);
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+
+      // Special-case: for fat/SNF inputs (max 15, 2 decimals), treat a lone "1"
+      // as the minimum allowed value 10.00.
+      if (num === 1 && maxValue === 15 && decimals === 2) {
+        const minVal = 10;
+        if (minVal > maxValue) {
+          if (onOverflow) onOverflow();
+          return '';
+        }
+        return toFixedTruncate(minVal);
+      }
+
+      return toFixedTruncate(num);
+    }
+
+    const isLeadingOneFatSnf = digits[0] === '1' && maxValue === 15 && decimals === 2;
+
+    if (isLeadingOneFatSnf) {
+      // Desired mappings for leading "1" in fat/SNF (max 15, 2 decimals):
+      // 1   -> 10.00  (handled above in length === 1 branch)
+      // 12  -> 12.00
+      // 134 -> 13.40
+      // 1345 -> 13.45
+
+      let num;
+
+      if (length === 2) {
+        // Two digits (10–15) -> treat as whole number with .00
+        num = parseInt(digits, 10);
+      } else {
+        // Three or more digits: use first two digits as integer part,
+        // subsequent digits as decimal part (max 2 decimals).
+        const intPartStr = digits.slice(0, 2);
+        const decimalDigits = digits.slice(2, 4); // up to 2 decimal digits
+        num = parseFloat(`${intPartStr}.${decimalDigits}`);
+      }
+
+      if (isNaN(num)) return '';
+      if (num > maxValue) {
+        if (onOverflow) onOverflow();
+        return '';
+      }
+
+      return toFixedTruncate(num);
+    }
+
+    // For CLR (max 36, 2 decimals):
+    //  - 24   -> 24.00
+    //  - 239  -> 23.90
+    //  - 3025 -> 30.25
+    if (maxValue === 36 && decimals === 2) {
+      let num;
+
+      if (length === 2) {
+        // Two digits are treated as whole number with .00
+        num = parseInt(digits, 10);
+      } else if (length === 3) {
+        // Three digits: first two as integer, last digit as decimal (e.g. 239 -> 23.9)
+        const intPartStr = digits.slice(0, 2);
+        const decimalDigits = digits.slice(2); // single digit
+        num = parseFloat(`${intPartStr}.${decimalDigits}`);
+      } else {
+        // Four or more digits: last TWO digits as decimal (e.g. 3025 -> 30.25)
+        const intPart = digits.slice(0, length - 2);
+        const fracPart = digits.slice(-2);
+        num = parseFloat(`${intPart}.${fracPart}`);
+      }
+
       if (isNaN(num)) return '';
       if (num > maxValue) {
         if (onOverflow) onOverflow();
@@ -357,8 +431,9 @@ const CollectionScreen = ({ navigation }) => {
       return toFixedTruncate(num);
     }
 
+    // Original behavior for non-leading-1, non-CLR values:
     // Two digits: last digit as decimal (e.g. 61 -> 6.10)
-    if (digits.length === 2) {
+    if (length === 2) {
       const intPart = digits.slice(0, 1);
       const fracPart = digits.slice(1);
       let num = parseFloat(`${intPart}.${fracPart}`);
@@ -370,8 +445,8 @@ const CollectionScreen = ({ navigation }) => {
       return toFixedTruncate(num);
     }
 
-    // Three or more digits: last TWO digits as decimal (e.g. 1267 -> 12.67, 3025 -> 30.25)
-    const intPart = digits.slice(0, digits.length - 2);
+    // Three or more digits: last TWO digits as decimal (e.g. 654 -> 6.54, 3025 -> 30.25)
+    const intPart = digits.slice(0, length - 2);
     const fracPart = digits.slice(-2);
     let num = parseFloat(`${intPart}.${fracPart}`);
     if (isNaN(num)) return '';
