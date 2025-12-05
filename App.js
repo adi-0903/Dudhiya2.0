@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AppNavigator from './navigation/AppNavigator';
 import './utils/i18n';
 import StatusBarManager from './components/StatusBarManager';
+import InternetConnectionAlert from './components/InternetConnectionAlert';
 
 const App = () => {
   return (
@@ -14,6 +15,7 @@ const App = () => {
           barStyle="light-content"
           translucent={true}
         />
+        <InternetConnectionAlert />
         <AppNavigator />
       </SafeAreaView>
     </SafeAreaProvider>

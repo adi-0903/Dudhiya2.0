@@ -474,6 +474,10 @@
     "recharge": "रिचार्ज",
     "in wallet": "वॉलेट में",
     "bonus will be credited instantly": "बोनस तुरंत जमा हो जाएगा",
-    "got it": "समझ गया"
+    "got it": "समझ गया",
+    "slow internet title": "इंटरनेट धीमा हो सकता है",
+    "slow internet message": "कुछ क्रियाओं में सामान्य से अधिक समय लग सकता है।",
+    "no internet connection title": "आप इंटरनेट से कनेक्ट नहीं हैं",
+    "no internet connection message": "कृपया अपना इंटरनेट कनेक्शन जांचें और दोबारा प्रयास करें।"
   }
 }

@@ -458,7 +458,11 @@
     "recharge": "ਰੀਚਾਰਜ",
     "in wallet": "ਵਾਲਿਟ 'ਚ",
     "bonus will be credited instantly": "ਬੋਨਸ ਤੁਰੰਤ ਜਮ੍ਹਾਂ ਹੋ ਜਾਵੇਗਾ",
-    "got it": "ਸਮਝ ਗਿਆ"
+    "got it": "ਸਮਝ ਗਿਆ",
+    "slow internet title": "ਇੰਟਰਨੈੱਟ ਹੌਲੀ ਹੋ ਸਕਦਾ ਹੈ",
+    "slow internet message": "ਕੁਝ ਕੰਮ ਆਮ ਤੋਂ ਵੱਧ ਸਮਾਂ ਲੈ ਸਕਦੇ ਹਨ।",
+    "no internet connection title": "ਤੁਸੀਂ ਇੰਟਰਨੈੱਟ ਨਾਲ ਜੁੜੇ ਹੋਏ ਨਹੀਂ ਹੋ",
+    "no internet connection message": "ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਇੰਟਰਨੈੱਟ ਕਨੈਕਸ਼ਨ ਜਾਂਚੋ ਅਤੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
   }
 
 }

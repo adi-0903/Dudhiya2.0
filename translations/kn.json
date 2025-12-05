@@ -475,6 +475,10 @@
       "recharge": "ರೀಚಾರ್ಜ್",
       "in wallet": "ವಾಲೆಟ್‌ನಲ್ಲಿ",
       "bonus will be credited instantly": "ಬೋನಸ್ ತಕ್ಷಣ ಜಮಾ ಆಗುತ್ತದೆ",
-      "got it": "ಅರ್ಥವಾಯಿತು"
+      "got it": "ಅರ್ಥವಾಯಿತು",
+      "slow internet title": "ಇಂಟರ್ನೆಟ್ ನಿಧಾನವಾಗಿರಬಹುದು",
+      "slow internet message": "ಕೆಲವು ಕ್ರಿಯೆಗಳು ಸಾಮಾನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚು ಸಮಯ ತೆಗೆದುಕೊಳ್ಳಬಹುದು.",
+      "no internet connection title": "ನೀವು ಇಂಟರ್ನೆಟ್‌ಗೆ ಸಂಪರ್ಕಗೊಂಡಿಲ್ಲ",
+      "no internet connection message": "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕವನ್ನು ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
     }
   }

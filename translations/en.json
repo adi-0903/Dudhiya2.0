@@ -466,6 +466,10 @@
     "recharge": "Recharge",
     "in wallet": "in Wallet",
     "bonus will be credited instantly": "Bonus will be credited instantly",
-    "got it": "Got It"
+    "got it": "Got It",
+    "slow internet title": "Internet might be slow",
+    "slow internet message": "Some actions may take longer than usual.",
+    "no internet connection title": "You are not connected to the internet",
+    "no internet connection message": "Please check your connection and try again."
   }
 }
