@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -10,6 +10,7 @@ import {
   Alert
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,10 +19,12 @@ import { getCollectionFeeConfig } from '../services/api';
 const WalletInfo = () => {
   const navigation = useNavigation();
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const [supportPhoneNumber] = useState('+91 7454860294');
   const { t, i18n } = useTranslation();
   const [collectionFeeConfig, setCollectionFeeConfig] = useState(null);
   const [isFeeLoading, setIsFeeLoading] = useState(true);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -73,6 +76,13 @@ const WalletInfo = () => {
 
   const handleSupportPress = () => {
     setShowHelpModal(true);
+  };
+
+  const closeVideoModal = async () => {
+    try {
+      await videoRef.current?.pauseAsync();
+    } catch (e) {}
+    setShowVideoModal(false);
   };
 
   const walletSteps = [
@@ -144,6 +154,13 @@ const WalletInfo = () => {
           <Text style={styles.introText}>
             {t('learn wallet system')}
           </Text>
+          <TouchableOpacity 
+            style={styles.videoButton}
+            onPress={() => setShowVideoModal(true)}
+          >
+            <Icon name="play-circle" size={22} color="#fff" />
+            <Text style={styles.videoButtonText}>{t('how wallet works')}</Text>
+          </TouchableOpacity>
         </View>
 
         {!isFeeLoading && collectionFeeConfig && (
@@ -190,6 +207,43 @@ const WalletInfo = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showVideoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeVideoModal}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeVideoModal}
+        >
+          <TouchableOpacity 
+            style={styles.videoModalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <TouchableOpacity
+              style={styles.closeIconButton}
+              onPress={closeVideoModal}
+            >
+              <Icon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+
+            <Text style={styles.videoTitle}>{t('how wallet works')}</Text>
+            <Video
+              ref={videoRef}
+              style={styles.videoPlayer}
+              source={require('../assets/Dudhiya-welcome.mp4')}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              isLooping={false}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={showHelpModal}
@@ -508,6 +562,44 @@ const styles = StyleSheet.create({
     top: 10,
     right: 10,
     padding: 5,
+  },
+  videoButton: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0D47A1',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    elevation: 3,
+  },
+  videoButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  videoModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    width: '100%',
+    maxWidth: 380,
+    elevation: 5,
+  },
+  videoTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  videoPlayer: {
+    width: '100%',
+    height: 320,
+    borderRadius: 12,
+    backgroundColor: '#000',
   },
 });
 
