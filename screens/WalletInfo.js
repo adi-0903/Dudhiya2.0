@@ -12,12 +12,16 @@ import {
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getCollectionFeeConfig } from '../services/api';
 
 const WalletInfo = () => {
   const navigation = useNavigation();
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [supportPhoneNumber] = useState('+91 7454860294');
   const { t, i18n } = useTranslation();
+  const [collectionFeeConfig, setCollectionFeeConfig] = useState(null);
+  const [isFeeLoading, setIsFeeLoading] = useState(true);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -31,7 +35,19 @@ const WalletInfo = () => {
       }
     };
     
+    const loadCollectionFee = async () => {
+      try {
+        const config = await getCollectionFeeConfig();
+        setCollectionFeeConfig(config);
+      } catch (error) {
+        console.error('Error loading collection fee config:', error);
+      } finally {
+        setIsFeeLoading(false);
+      }
+    };
+
     loadSavedLanguage();
+    loadCollectionFee();
   }, [i18n]);
 
   const handleWhatsAppPress = async () => {
@@ -129,6 +145,22 @@ const WalletInfo = () => {
             {t('learn wallet system')}
           </Text>
         </View>
+
+        {!isFeeLoading && collectionFeeConfig && (
+          <View style={styles.feeInfoContainer}>
+            <View style={styles.feeIconContainer}>
+              <Icon name="cash-multiple" size={24} color="#fff" />
+            </View>
+            <View style={styles.feeTextContainer}>
+              <Text style={styles.feeTitle}>{t('wallet fee title')}</Text>
+              <Text style={styles.feeDescription}>
+                {collectionFeeConfig.enabled
+                  ? t('wallet fee description', { rate: Number(collectionFeeConfig.per_kg_rate).toFixed(3) })
+                  : t('wallet fee description disabled')}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.stepsContainer}>
           {walletSteps.map((step, index) => (
@@ -284,6 +316,44 @@ const styles = StyleSheet.create({
   },
   stepsContainer: {
     padding: 20,
+  },
+  feeInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 5,
+    borderRadius: 12,
+    padding: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  feeIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#0D47A1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  feeTextContainer: {
+    flex: 1,
+  },
+  feeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0D47A1',
+    marginBottom: 4,
+  },
+  feeDescription: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 20,
   },
   stepCard: {
     flexDirection: 'row',

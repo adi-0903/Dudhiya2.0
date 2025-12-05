@@ -44,6 +44,7 @@ const ENDPOINTS = {
   PRO_RATA_PURCHASE_SUMMARY_REPORT: '/collector/pro-rata-reports/purchase-summary-report/',
   PRO_RATA_PURCHASE_SUMMARY_DATA: '/collector/pro-rata-reports/purchase-summary-data/',
   PRO_RATA_RATE_CHART: '/collector/pro-rata-rate-chart/',
+  COLLECTION_FEE_CONFIG: '/collector/collection-fee-config/',
 
   // Wallet endpoints
   WALLET: '/wallet/',
@@ -60,6 +61,16 @@ export const getYouTubeLink = async () => {
   try {
     const response = await api.get(ENDPOINTS.YOUTUBE_LINK);
     // Expecting { link: string }
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Fetch collection fee configuration (per kg rate and enabled flag)
+export const getCollectionFeeConfig = async () => {
+  try {
+    const response = await api.get(ENDPOINTS.COLLECTION_FEE_CONFIG);
     return response.data;
   } catch (error) {
     throw error;

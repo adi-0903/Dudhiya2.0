@@ -151,7 +151,7 @@ const PaymentHistoryScreen = () => {
           styles.amount,
           { color: getTransactionColor(item.transaction_type, item.status) }
         ]}>
-          {item.transaction_type === 'CREDIT' ? '+' : '-'} ₹{parseFloat(item.amount).toFixed(2)}
+          {item.transaction_type === 'CREDIT' ? '+' : '-'} ₹{String(item.amount)}
         </Text>
       </View>
     </View>
