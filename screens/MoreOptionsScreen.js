@@ -13,7 +13,6 @@ import {
   Animated
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import { Video, ResizeMode } from 'expo-av';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -21,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import UpdateService from '../utils/updateService';
 import * as Clipboard from 'expo-clipboard';
 import { getYouTubeLink } from '../services/api';
+import HowToUseApp from '../components/HowToUseApp';
 
 const MoreOptionScreen = () => {
   const navigation = useNavigation();
@@ -31,13 +31,9 @@ const MoreOptionScreen = () => {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const supportPhoneNumber = '+917454860294';
   const { t, i18n } = useTranslation();
-  const [showHowToModal, setShowHowToModal] = useState(false);
-  const [showHowToReportModal, setShowHowToReportModal] = useState(false);
   const [youtubeLink, setYoutubeLink] = useState(null);
   const [showWebModal, setShowWebModal] = useState(false);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
-  const howToVideoRef = useRef(null);
-  const howToReportVideoRef = useRef(null);
   const partnerScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -195,20 +191,6 @@ const MoreOptionScreen = () => {
     }
   };
 
-  const closeHowToModal = async () => {
-    try {
-      await howToVideoRef.current?.pauseAsync();
-    } catch (e) {}
-    setShowHowToModal(false);
-  };
-
-  const closeHowToReportModal = async () => {
-    try {
-      await howToReportVideoRef.current?.pauseAsync();
-    } catch (e) {}
-    setShowHowToReportModal(false);
-  };
-
   const handleLanguageChange = () => {
     navigation.navigate('LanguageSelection', { 
       fromScreen: 'MoreOptions',
@@ -246,16 +228,6 @@ const MoreOptionScreen = () => {
       icon: 'crown-outline', 
       onPress: () => navigation.navigate('WalletInfo') 
     },
-    // {
-    //   name: t('how to use this app?'),
-    //   icon: 'play-circle',
-    //   onPress: () => setShowHowToModal(true)
-    // },
-    // {
-    //   name: t('how to generate reports?'),
-    //   icon: 'play-circle',
-    //   onPress: () => setShowHowToReportModal(true)
-    // },
     {
       name: t('become a partner'),
       icon: 'briefcase-account',
@@ -358,6 +330,10 @@ const MoreOptionScreen = () => {
           );
         })}
 
+        <View style={{ marginTop: 20 }}>
+          <HowToUseApp />
+        </View>
+
         <View style={styles.appInfoContainer}>
           <TouchableOpacity onPress={handleVersionPress}>
             <Text style={styles.appNameText}>Dudhiya</Text>
@@ -410,82 +386,6 @@ const MoreOptionScreen = () => {
         </View>
         
       </ScrollView>
-
-      {/* How-To Video Modal */}
-      <Modal
-        visible={showHowToModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={closeHowToModal}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeHowToModal}
-        >
-          <TouchableOpacity 
-            style={styles.howToModalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <TouchableOpacity 
-              style={styles.closeIconButton}
-              onPress={closeHowToModal}
-            >
-              <Icon name="close" size={24} color="#666" />
-            </TouchableOpacity>
-
-            <Text style={styles.howToTitle}>{t('how to use this app?')}</Text>
-            <Video
-              ref={howToVideoRef}
-              style={styles.howToVideo}
-              source={require('../assets/Dudhiya-welcome.mp4')}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
-              isLooping={false}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* How-To Generate Reports Modal */}
-      <Modal
-        visible={showHowToReportModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={closeHowToReportModal}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeHowToReportModal}
-        >
-          <TouchableOpacity 
-            style={styles.howToModalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <TouchableOpacity 
-              style={styles.closeIconButton}
-              onPress={closeHowToReportModal}
-            >
-              <Icon name="close" size={24} color="#666" />
-            </TouchableOpacity>
-
-            <Text style={styles.howToTitle}>{t('how to generate reports?')}</Text>
-            <Video
-              ref={howToReportVideoRef}
-              style={styles.howToVideo}
-              source={require('../assets/Dudhiya-welcome.mp4')}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
-              isLooping={false}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
 
       {/* Partner Program Modal */}
       <Modal

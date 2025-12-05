@@ -433,7 +433,7 @@ const UserInfoScreen = ({ navigation }) => {
                   style={styles.goToHomeButton} 
                   onPress={handleButtonPress(() => {
                     setShowSuccessModal(false);
-                    navigation.replace('Home'); // Using replace to prevent going back to this screen
+                    navigation.replace('Home', { autoOpenHowTo: true }); // Using replace to prevent going back to this screen
                   })}
                 >
                   <Icon name="check" size={20} color="#FFFFFF" />
