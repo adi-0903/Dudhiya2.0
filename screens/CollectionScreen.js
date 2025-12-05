@@ -2958,7 +2958,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    minWidth: 80,  // Ensure consistent width for label area
+    width: 80,  // Fix width so label area doesn't grow differently on some devices
   },
   inputWrapper: {
     flex: 1,
