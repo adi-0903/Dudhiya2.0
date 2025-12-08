@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -17,6 +17,7 @@ import {
   Modal
 } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getWalletBalance, addMoneyToWallet } from '../services/api';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +34,8 @@ const WalletScreen = ({ navigation }) => {
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [supportPhoneNumber] = useState('+91 7454860294');
   const { t, i18n } = useTranslation();
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -172,6 +175,13 @@ const WalletScreen = ({ navigation }) => {
     Linking.openURL(`tel:${supportPhoneNumber}`);
   };
 
+  const closeVideoModal = async () => {
+    try {
+      await videoRef.current?.pauseAsync();
+    } catch (e) {}
+    setShowVideoModal(false);
+  };
+
   // Add this animation for the refresh icon
   const [spinAnim] = useState(new Animated.Value(0));
 
@@ -254,6 +264,16 @@ const WalletScreen = ({ navigation }) => {
                   <Text style={styles.historyButtonText}>{t('payment history')}</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+
+            <View style={styles.walletInfoButtonContainer}>
+              <TouchableOpacity
+                style={styles.walletInfoButton}
+                onPress={() => setShowVideoModal(true)}
+              >
+                <Icon name="play-circle" size={18} color="#0D47A1" />
+                <Text style={styles.walletInfoButtonText}>{t('how wallet works')}</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.infoCard}>
@@ -368,6 +388,43 @@ const WalletScreen = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showVideoModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeVideoModal}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeVideoModal}
+        >
+          <TouchableOpacity 
+            style={styles.videoModalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <TouchableOpacity
+              style={styles.closeIconButton}
+              onPress={closeVideoModal}
+            >
+              <Icon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+
+            <Text style={styles.videoTitle}>{t('how wallet works')}</Text>
+            <Video
+              ref={videoRef}
+              style={styles.videoPlayer}
+              source={require('../assets/Dudhiya-welcome.mp4')}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay
+              isLooping={false}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal
         visible={showHelpModal}
@@ -1068,6 +1125,47 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 4,
     paddingLeft: 28,
+  },
+  walletInfoButtonContainer: {
+    marginHorizontal: 14,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  walletInfoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  walletInfoButtonText: {
+    marginLeft: 8,
+    color: '#0D47A1',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  videoModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    width: '90%',
+    maxWidth: 380,
+    elevation: 5,
+  },
+  videoTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  videoPlayer: {
+    width: '100%',
+    height: 320,
+    borderRadius: 12,
+    backgroundColor: '#000',
   },
 });
 
