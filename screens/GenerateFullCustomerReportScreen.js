@@ -480,7 +480,7 @@ const GenerateFullCustomerReportScreen = ({ navigation }) => {
         </Text>
         <Text style={styles.separator}>|</Text>
         <Text style={[styles.cell, { textAlign: 'center', width: '10%' }]}>
-          {parseFloat(item.weight).toFixed(1)}
+          {parseFloat(item.weight).toFixed(2)}
         </Text>
         <Text style={styles.separator}>|</Text>
         <Text style={[styles.cell, { textAlign: 'center', width: '10%' }]}>

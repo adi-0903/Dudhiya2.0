@@ -993,7 +993,7 @@ const CollectionScreen = ({ navigation }) => {
         : NaN;
 
     const displayOrDash = (value) =>
-      !isNaN(value) && value > 0 ? value.toFixed(1) : '-';
+      !isNaN(value) && value > 0 ? value.toFixed(2) : '-';
 
     return (
       <View>
@@ -1063,7 +1063,7 @@ const CollectionScreen = ({ navigation }) => {
               <Text style={styles.cellText}>{displayOrDash(baseSnfPct)}</Text>
             </View>
             <View style={[styles.cell, { flex: 1.2 }]}>
-              <Text style={styles.cellText}>{!isNaN(clrValue) && clrValue > 0 ? clrValue.toFixed(1) : '-'}</Text>
+              <Text style={styles.cellText}>{!isNaN(clrValue) && clrValue > 0 ? clrValue.toFixed(2) : '-'}</Text>
             </View>
           </TouchableOpacity>
         </View>
