@@ -418,7 +418,7 @@ const GenerateProRataPurchaseReportScreen = ({ navigation }) => {
     <TouchableOpacity style={styles.collectionRow}>
       <Text style={styles.cell}>{item.date}</Text>
       <Text style={styles.separator}>|</Text>
-      <Text style={styles.cell}>{parseFloat(item.weight).toFixed(1)}</Text>
+      <Text style={styles.cell}>{parseFloat(item.weight).toFixed(2)}</Text>
       <Text style={styles.separator}>|</Text>
       <Text style={styles.cell}>{parseFloat(item.fat_percentage).toFixed(1)}</Text>
       <Text style={styles.separator}>|</Text>

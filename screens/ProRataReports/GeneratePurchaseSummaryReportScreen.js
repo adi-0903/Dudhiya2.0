@@ -416,7 +416,7 @@ const GenerateProRataPurchaseSummaryReportScreen = ({ navigation }) => {
     <TouchableOpacity style={styles.collectionRow}>
       <Text style={[styles.cell, { textAlign: 'center', width: '20%' }]}>{item.party_name}</Text>
       <Text style={[styles.separator]}>|</Text>
-      <Text style={[styles.cell, { textAlign: 'center', width: '15%' }]}>{parseFloat(item.weight).toFixed(1)}</Text>
+      <Text style={[styles.cell, { textAlign: 'center', width: '15%' }]}>{parseFloat(item.weight).toFixed(2)}</Text>
       <Text style={[styles.separator]}>|</Text>
       <Text style={[styles.cell, { textAlign: 'center', width: '15%' }]}>{parseFloat(item.fat_kg).toFixed(2)}</Text>
       <Text style={[styles.separator]}>|</Text>

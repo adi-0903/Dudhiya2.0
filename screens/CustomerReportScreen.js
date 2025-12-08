@@ -534,7 +534,7 @@ const CustomerReportScreen = ({ route }) => {
         </Text>
         <Text style={styles.separator}>|</Text>
         <Text style={[styles.cell, { textAlign: 'center', width: '17%' }]}>
-          {item.weight || '0.00'}
+          {parseFloat(item.weight || 0).toFixed(2)}
         </Text>
         <Text style={styles.separator}>|</Text>
         <Text style={[styles.cell, { textAlign: 'center', width: '10%' }]}>

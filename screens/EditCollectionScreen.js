@@ -1705,21 +1705,39 @@ const EditCollectionScreen = ({ route, navigation }) => {
                       <View style={[styles.previewRow, { marginBottom: 16 }]}>  
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>{isLitersOnlyMode ? 'Liters' : 'Weight'}</Text>
-                          <Text style={styles.previewValue}>{parseFloat(formData.weight)} {isLitersOnlyMode ? 'L' : 'KG'}</Text>
+                          <Text style={styles.previewValue}>
+                            {(() => {
+                              const val = parseFloat(formData.weight);
+                              return !isNaN(val) ? val.toFixed(2) : '0.00';
+                            })()} {isLitersOnlyMode ? 'L' : 'KG'}
+                          </Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Fat %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(formData.fat_percentage)}</Text>
+                          <Text style={styles.previewValue}>
+                            {(() => {
+                              const val = parseFloat(formData.fat_percentage);
+                              return !isNaN(val) ? val.toFixed(2) : '0.00';
+                            })()}
+                          </Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>SNF %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(formData.snf_percentage)}</Text>
+                          <Text style={styles.previewValue}>
+                            {(() => {
+                              const val = parseFloat(formData.snf_percentage);
+                              return !isNaN(val) ? val.toFixed(2) : '0.00';
+                            })()}
+                          </Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>CLR</Text>
                           <Text style={styles.previewValue}>
-                            {selectedRadios.clr ? 
-                              formData.clr  // Use the original formData.clr directly, without parsing/formatting
+                            {selectedRadios.clr && formData.clr
+                              ? (() => {
+                                  const val = parseFloat(formData.clr);
+                                  return !isNaN(val) ? val.toFixed(2) : formData.clr;
+                                })()
                               : '—'}
                           </Text>
                         </View>
@@ -1728,24 +1746,42 @@ const EditCollectionScreen = ({ route, navigation }) => {
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Fat KG</Text>
                           <Text style={styles.previewValue}>
-                            {String(parseFloat(formData.weight) * (parseFloat(formData.fat_percentage) / 100))
-                              .slice(0, (String(parseFloat(formData.weight) * (parseFloat(formData.fat_percentage) / 100)).indexOf('.')) + 3)}
+                            {(() => {
+                              const weightVal = parseFloat(formData.weight);
+                              const fatVal = parseFloat(formData.fat_percentage);
+                              if (isNaN(weightVal) || isNaN(fatVal)) return '0.00';
+                              return (weightVal * (fatVal / 100)).toFixed(2);
+                            })()}
                           </Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>SNF KG</Text>
                           <Text style={styles.previewValue}>
-                            {String(parseFloat(formData.weight) * (parseFloat(formData.snf_percentage) / 100))
-                              .slice(0, (String(parseFloat(formData.weight) * (parseFloat(formData.snf_percentage) / 100)).indexOf('.')) + 3)}
+                            {(() => {
+                              const weightVal = parseFloat(formData.weight);
+                              const snfVal = parseFloat(formData.snf_percentage);
+                              if (isNaN(weightVal) || isNaN(snfVal)) return '0.00';
+                              return (weightVal * (snfVal / 100)).toFixed(2);
+                            })()}
                           </Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Milk Rate</Text>
-                          <Text style={styles.previewValue}>₹{parseFloat(formData.milk_rate).toFixed(2)}</Text>
+                          <Text style={styles.previewValue}>
+                            ₹{(() => {
+                              const val = parseFloat(formData.milk_rate);
+                              return !isNaN(val) ? val.toFixed(2) : '0.00';
+                            })()}
+                          </Text>
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>Base SNF %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(formData.base_snf_percentage)}</Text>
+                          <Text style={styles.previewValue}>
+                            {(() => {
+                              const val = parseFloat(formData.base_snf_percentage);
+                              return !isNaN(val) ? val.toFixed(2) : '0.00';
+                            })()}
+                          </Text>
                         </View>
                       </View>
                     </View>
