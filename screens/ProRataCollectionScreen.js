@@ -4927,6 +4927,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  rateTypePickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    backgroundColor: '#f9f9f9',
+    paddingHorizontal: 4,
+  },
+  rateTypePicker: {
+    color: '#0D47A1',
+  },
 });
 
 export default ProRataCollectionScreen;

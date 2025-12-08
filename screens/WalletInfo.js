@@ -25,6 +25,10 @@ const WalletInfo = () => {
   const [collectionFeeConfig, setCollectionFeeConfig] = useState(null);
   const [isFeeLoading, setIsFeeLoading] = useState(true);
   const videoRef = useRef(null);
+  const perKgRate = Number(collectionFeeConfig?.per_kg_rate || 0);
+  const formattedPerKgRate = perKgRate.toFixed(3);
+  const exampleWeight = 100;
+  const exampleTotal = (perKgRate * exampleWeight).toFixed(2);
 
   useEffect(() => {
     const loadSavedLanguage = async () => {
@@ -172,7 +176,7 @@ const WalletInfo = () => {
               <Text style={styles.feeTitle}>{t('wallet fee title')}</Text>
               <Text style={styles.feeDescription}>
                 {collectionFeeConfig.enabled
-                  ? t('wallet fee description', { rate: Number(collectionFeeConfig.per_kg_rate).toFixed(3) })
+                  ? t('wallet fee description', { rate: formattedPerKgRate, exampleTotal })
                   : t('wallet fee description disabled')}
               </Text>
             </View>
