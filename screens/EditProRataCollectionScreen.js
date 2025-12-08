@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next';
 import * as FileSystem from 'expo-file-system';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
-import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS } from '../utils/dairySettings';
+import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS, API_TO_INTERNAL_FAT_SNF_RATIO, INTERNAL_TO_API_FAT_SNF_RATIO } from '../utils/dairySettings';
 
 // TimeModal component with improved UI
 const TimeModal = ({ visible, onClose, selectedTime, onSelectTime }) => {
@@ -489,38 +489,6 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
   };
 
   useEffect(() => {
-    const loadStepRates = async () => {
-      try {
-        const response = await getProRataRateChart();
-        if (response?.id) {
-          setRateChartId(response.id);
-        }
-
-        const serverFatSteps = Array.isArray(response?.fat_step_up_rates)
-          ? response.fat_step_up_rates.map((item) => ({
-              threshold: String(item.step ?? ''),
-              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-              id: item.id,
-            }))
-          : [{ threshold: '6.5', rate: '' }];
-
-        const serverSnfSteps = Array.isArray(response?.snf_step_down_rates)
-          ? response.snf_step_down_rates.map((item) => ({
-              threshold: String(item.step ?? ''),
-              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-              id: item.id,
-            }))
-          : [{ threshold: '9.0', rate: '' }];
-
-        setFatStepUpThresholds(sortFatThresholds(serverFatSteps));
-        setSnfStepDownThresholds(sortSnfThresholds(serverSnfSteps));
-      } catch (e) {
-        console.error('Error loading pro-rata rate chart:', e);
-        setFatStepUpThresholds([{ threshold: '6.5', rate: '' }]);
-        setSnfStepDownThresholds([{ threshold: '9.0', rate: '' }]);
-      }
-    };
-    loadStepRates();
   }, []);
   const openRateChartModal = () => {
     setTempFatSnfRatio(fatSnfRatio);
@@ -563,75 +531,17 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
     fetchDairyInfo();
   }, [collectionId]);
 
-  // Add function to fetch dairy info and hydrate rate settings
+  // Add function to fetch dairy info and hydrate rate settings (no-op for per-collection editing)
   const fetchDairyInfo = async () => {
-    try {
-      const dairyInfo = await getDairyInfo();
-      if (!dairyInfo) return;
-
-      const sanitized = normalizeDairyInfo(dairyInfo);
-      setDairyDetails(sanitized);
-
-      const ratioValue = sanitized.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
-      setFatSnfRatio(ratioValue);
-      setTempFatSnfRatio(ratioValue);
-
-      const clrValue = sanitized.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
-      setClrConversionFactor(clrValue);
-      setTempClrConversionFactor(clrValue);
-
-      if (sanitized.rate_type === 'fat_clr') {
-        setSelectedRadios({ snf: false, clr: true });
-      } else if (sanitized.rate_type === 'fat_snf') {
-        setSelectedRadios({ snf: true, clr: false });
-      } else {
-        setSelectedRadios({ snf: false, clr: false });
-      }
-    } catch (error) {
-      console.error('Error fetching dairy info:', error);
-    }
+    return null;
   };
 
   const ensureDairyDetailsForUpdate = async () => {
-    if (dairyDetails?.id) {
-      return dairyDetails;
-    }
-    const fetched = await getDairyInfo();
-    if (!fetched) return null;
-    const sanitized = normalizeDairyInfo(fetched);
-    setDairyDetails(sanitized);
-    return sanitized;
+    return null;
   };
 
   const persistDairySettings = async (overrides = {}, options = {}) => {
-    const { skipIfUnchanged = false } = options;
-    try {
-      const current = await ensureDairyDetailsForUpdate();
-      if (!current?.id) {
-        return null;
-      }
-
-      const merged = { ...current, ...overrides };
-      if (
-        skipIfUnchanged &&
-        Object.keys(overrides).every((key) => String(current[key]) === String(merged[key]))
-      ) {
-        return current;
-      }
-
-      const payload = buildDairyUpdatePayload(current, overrides);
-      if (!payload) {
-        return current;
-      }
-
-      const updated = await updateDairyInfo(payload);
-      const sanitized = normalizeDairyInfo(updated);
-      setDairyDetails(sanitized);
-      return sanitized;
-    } catch (error) {
-      console.error('Error saving dairy settings:', error);
-      return null;
-    }
+    return null;
   };
 
   // CLR-based SNF auto-update removed for Pro-Rata edit screen
@@ -692,6 +602,19 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
       console.log('Customer field from API:', response.customer);
       console.log('Customer ID field from API:', response.customer_id);
 
+      // Initialize per-collection fat/snf ratio and clr conversion factor from snapshot
+      const apiFatSnfRatio = response.fat_snf_ratio;
+      const internalFatSnfRatio = API_TO_INTERNAL_FAT_SNF_RATIO[apiFatSnfRatio] || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
+      setFatSnfRatio(internalFatSnfRatio);
+      setTempFatSnfRatio(internalFatSnfRatio);
+
+      const clrFactorNum = parseFloat(response.clr_conversion_factor);
+      const clrFactor = !isNaN(clrFactorNum)
+        ? clrFactorNum.toFixed(2)
+        : DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
+      setClrConversionFactor(clrFactor);
+      setTempClrConversionFactor(clrFactor);
+
       // Extract customer information
       // For a new collection, customer ID and name come from the route params
       // For an existing collection being fetched from API, we need the actual customer database ID
@@ -736,6 +659,29 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
           ? (Number.parseFloat(response.clr).toFixed(2))
           : ''
       });
+
+      // Initialize rate chart thresholds from per-collection snapshot if present
+      const collectionChart = response.pro_rata_collection_rate_chart;
+      if (collectionChart) {
+        const serverFatSteps = Array.isArray(collectionChart.fat_step_up_rates)
+          ? collectionChart.fat_step_up_rates.map((item) => ({
+              threshold: String(item.step ?? ''),
+              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+              id: item.id,
+            }))
+          : [];
+
+        const serverSnfSteps = Array.isArray(collectionChart.snf_step_down_rates)
+          ? collectionChart.snf_step_down_rates.map((item) => ({
+              threshold: String(item.step ?? ''),
+              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+              id: item.id,
+            }))
+          : [];
+
+        setFatStepUpThresholds(sortFatThresholds(serverFatSteps));
+        setSnfStepDownThresholds(sortSnfThresholds(serverSnfSteps));
+      }
 
       // Initialize step rates from existing collection if available
       if (response.fat_step_up_rate !== undefined) {
@@ -962,6 +908,9 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
         const milkRate = parseFloat(formData.milk_rate);
         const baseSnfPercentage = parseFloat(formData.base_snf_percentage);
 
+        // Map internal fat/snf ratio key to API value (e.g. '60_40' -> '60/40')
+        const fatSnfRatioApi = INTERNAL_TO_API_FAT_SNF_RATIO[fatSnfRatio] || null;
+
         // Calculate liters from kg (assuming 1.02249 density factor)
         const liters = (weightKg / 1.02249).toFixed(2);
 
@@ -1032,6 +981,26 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
         const milkType = (formData.milk_type || '').toLowerCase().replace(/\s+/g, '');
         const formattedMilkType = milkType === 'cow+buffalo' ? 'cow_buffalo' : milkType;
 
+        // Build per-collection pro-rata rate chart snapshot
+        const fatStepUpRatesPayload = (fatStepUpThresholds || [])
+          .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
+          .map((item) => ({
+            step: Number(item.threshold),
+            rate: Number(item.rate),
+          }));
+
+        const snfStepDownRatesPayload = (snfStepDownThresholds || [])
+          .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
+          .map((item) => ({
+            step: Number(item.threshold),
+            rate: -Math.abs(Number(item.rate)),
+          }));
+
+        const proRataChartPayload = {
+          fat_step_up_rates: fatStepUpRatesPayload,
+          snf_step_down_rates: snfStepDownRatesPayload,
+        };
+
         const collectionData = {
           customer: formData.customer_id,
           collection_date: formData.collection_date.toISOString().split('T')[0],
@@ -1054,7 +1023,10 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
           // Persist the applied rates used for this calculation for traceability
           fat_step_up_rate: (resolveRateFromFatThresholds(fatPercentage, fatStepUpThresholds) || 0).toString(),
           snf_step_down_rate: (resolveRateFromSnfThresholds(snfPercentageValue, snfStepDownThresholds) || 0).toString(),
-          is_pro_rata: true
+          is_pro_rata: true,
+          fat_snf_ratio: fatSnfRatioApi,
+          clr_conversion_factor: clrConversionFactor,
+          pro_rata_collection_rate_chart: proRataChartPayload
         };
 
         setPreviewData(collectionData);
@@ -2337,68 +2309,27 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.modalButton, styles.confirmButton]}
-                  onPress={async () => {
-                    try {
-                      setFatSnfRatio(tempFatSnfRatio);
-                      setClrConversionFactor(tempClrConversionFactor);
+                  onPress={() => {
+                    // Apply temporary settings to main state without hitting global endpoints
+                    setFatSnfRatio(tempFatSnfRatio);
+                    setClrConversionFactor(tempClrConversionFactor);
 
-                      const payload = {
-                        fat_step_up_rates: (tempFatStepUpThresholds || [])
-                          .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
-                          .map((item) => ({
-                            id: item.id,
-                            step: Number(item.threshold),
-                            rate: Number(item.rate),
-                          })),
-                        snf_step_down_rates: (tempSnfStepDownThresholds || [])
-                          .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate))
-                          .map((item) => ({
-                            id: item.id,
-                            step: Number(item.threshold),
-                            rate: -Math.abs(Number(item.rate)),
-                          })),
-                      };
+                    const fatThresholds = (tempFatStepUpThresholds || [])
+                      .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate));
+                    const snfThresholds = (tempSnfStepDownThresholds || [])
+                      .filter((item) => parseFloat(item.threshold) && parseFloat(item.rate));
 
-                      const result = await upsertProRataRateChart(rateChartId, payload);
-                      setRateChartId(result?.id || rateChartId);
+                    const sortedFat = sortFatThresholds(fatThresholds);
+                    const sortedSnf = sortSnfThresholds(snfThresholds);
 
-                      const updatedFat = Array.isArray(result?.fat_step_up_rates)
-                        ? result.fat_step_up_rates.map((item) => ({
-                            threshold: String(item.step ?? ''),
-                            rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-                            id: item.id,
-                          }))
-                        : [];
+                    setFatStepUpThresholds(sortedFat);
+                    setSnfStepDownThresholds(sortedSnf);
 
-                      const updatedSnf = Array.isArray(result?.snf_step_down_rates)
-                        ? result.snf_step_down_rates.map((item) => ({
-                            threshold: String(item.step ?? ''),
-                            rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-                            id: item.id,
-                          }))
-                        : [];
-
-                      const sortedFat = sortFatThresholds(updatedFat);
-                      const sortedSnf = sortSnfThresholds(updatedSnf);
-
-                      setFatStepUpThresholds(sortedFat);
-                      setSnfStepDownThresholds(sortedSnf);
-
-                      const overrides = {
-                        fat_snf_ratio: tempFatSnfRatio,
-                        clr_conversion_factor: tempClrConversionFactor,
-                      };
-                      await persistDairySettings(overrides, { skipIfUnchanged: true });
-
-                      if (previewData) {
-                        recalculatePreviewWithSettings(tempFatSnfRatio, sortedFat, sortedSnf);
-                      }
-
-                      setShowRateChartModal(false);
-                    } catch (e) {
-                      console.error('Error saving pro-rata rate chart:', e);
-                      Alert.alert(t('error'), t('failed to save rate chart. please try again.'));
+                    if (previewData) {
+                      recalculatePreviewWithSettings(tempFatSnfRatio, sortedFat, sortedSnf);
                     }
+
+                    setShowRateChartModal(false);
                   }}
                 >
                   <Text style={[styles.modalButtonText, styles.confirmButtonText]}>{t('save')}</Text>

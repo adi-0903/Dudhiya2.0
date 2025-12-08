@@ -23,7 +23,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
-import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS } from '../utils/dairySettings';
+import { sanitizeDairyInfo as normalizeDairyInfo, buildDairyUpdatePayload, DEFAULT_DAIRY_SETTINGS, API_TO_INTERNAL_FAT_SNF_RATIO, INTERNAL_TO_API_FAT_SNF_RATIO } from '../utils/dairySettings';
 
 // TimeModal component with improved UI
 const TimeModal = ({ visible, onClose, selectedTime, onSelectTime }) => {
@@ -290,73 +290,19 @@ const EditCollectionScreen = ({ route, navigation }) => {
   // Add function to fetch dairy info and set radio buttons
   const fetchDairyInfo = async () => {
     try {
-      const dairyInfo = await getDairyInfo();
-      if (dairyInfo) {
-        const sanitized = normalizeDairyInfo(dairyInfo);
-        setDairyDetails(sanitized);
-
-        const baseSnfValue = sanitized.base_snf || DEFAULT_DAIRY_SETTINGS.baseSnf;
-        setFormData((prev) => ({ ...prev, base_snf_percentage: baseSnfValue }));
-
-        const ratioValue = sanitized.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
-        setFatSnfRatio(ratioValue);
-        setTempFatSnfRatio(ratioValue);
-
-        const clrValue = sanitized.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
-        setClrConversionFactor(clrValue);
-        setTempClrConversionFactor(clrValue);
-
-        const resolvedRateType = sanitized.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
-        setRateTypePickerValue(resolvedRateType);
-        setSelectedRadios(getRadiosForRateType(resolvedRateType));
-      }
+      return null;
     } catch (error) {
       console.error('Error fetching dairy info:', error);
+      return null;
     }
   };
 
   const ensureDairyDetailsForUpdate = async () => {
-    if (dairyDetails?.id) {
-      return dairyDetails;
-    }
-    const fetched = await getDairyInfo();
-    if (fetched) {
-      const sanitized = normalizeDairyInfo(fetched);
-      setDairyDetails(sanitized);
-      return sanitized;
-    }
     return null;
   };
 
   const persistDairySettings = async (overrides = {}, options = {}) => {
-    const { skipIfUnchanged = false } = options;
-    try {
-      const current = await ensureDairyDetailsForUpdate();
-      if (!current?.id) {
-        return null;
-      }
-
-      const merged = { ...current, ...overrides };
-      if (
-        skipIfUnchanged &&
-        Object.keys(overrides).every((key) => String(current[key]) === String(merged[key]))
-      ) {
-        return current;
-      }
-
-      const payload = buildDairyUpdatePayload(current, overrides);
-      if (!payload) {
-        return current;
-      }
-
-      const updated = await updateDairyInfo(payload);
-      const sanitized = normalizeDairyInfo(updated);
-      setDairyDetails(sanitized);
-      return sanitized;
-    } catch (error) {
-      console.error('Error saving dairy settings:', error);
-      return null;
-    }
+    return null;
   };
 
   // Define calculateSnfFromClr function before using it in useEffect
@@ -436,6 +382,17 @@ const EditCollectionScreen = ({ route, navigation }) => {
       setIsLoading(true);
       const response = await getCollection(collectionId);
       setCollectionData(response);
+      const apiFatSnfRatio = response.fat_snf_ratio;
+      const internalFatSnfRatio = API_TO_INTERNAL_FAT_SNF_RATIO[apiFatSnfRatio] || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
+      setFatSnfRatio(internalFatSnfRatio);
+      setTempFatSnfRatio(internalFatSnfRatio);
+
+      const clrFactorNum = parseFloat(response.clr_conversion_factor);
+      const clrFactor = !isNaN(clrFactorNum)
+        ? clrFactorNum.toFixed(2)
+        : DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
+      setClrConversionFactor(clrFactor);
+      setTempClrConversionFactor(clrFactor);
       console.log('API Response structure:', JSON.stringify(response, null, 2));
       console.log('Customer field from API:', response.customer);
       console.log('Customer ID field from API:', response.customer_id);
@@ -588,6 +545,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
         const milkRate = parseFloat(formData.milk_rate);
         const baseSnfPercentage = parseFloat(formData.base_snf_percentage);
         const formattedMilkType = (formData.milk_type || '').toLowerCase();
+        const fatSnfRatioApi = INTERNAL_TO_API_FAT_SNF_RATIO[fatSnfRatio] || null;
 
         if (rateTypePickerValue === 'kg_only') {
           const weightKg = parseFloat(formData.weight);
@@ -615,7 +573,9 @@ const EditCollectionScreen = ({ route, navigation }) => {
             milk_rate: milkRate.toString(),
             solid_weight: solidWeight.toString(),
             amount: amount.toString(),
-            base_snf_percentage: baseSnfPercentage.toString()
+            base_snf_percentage: baseSnfPercentage.toString(),
+            fat_snf_ratio: fatSnfRatioApi,
+            clr_conversion_factor: clrConversionFactor
           };
 
           setPreviewData(collectionData);
@@ -711,7 +671,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
           kg: weightKg.toString(),
           fat_percentage: fatPercentage.toString(),
           fat_kg: fatKg.toString(),
-          clr: selectedRadios.clr ? clrValue.toString() : '' | "",  // Use the exact CLR value entered by the user
+          clr: selectedRadios.clr ? clrValue.toString() : '',
           snf_percentage: snfPercentage.toString(),
           snf_kg: snfKg.toString(),
           fat_rate: fatRate.toString(),
@@ -719,7 +679,9 @@ const EditCollectionScreen = ({ route, navigation }) => {
           milk_rate: milkRate.toString(),
           solid_weight: solidWeight,
           amount: amount.toString(),
-          base_snf_percentage: baseSnfPercentage.toString()
+          base_snf_percentage: baseSnfPercentage.toString(),
+          fat_snf_ratio: fatSnfRatioApi,
+          clr_conversion_factor: clrConversionFactor
         };
 
         setPreviewData(collectionData);
