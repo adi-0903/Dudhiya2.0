@@ -363,6 +363,9 @@ Main serialized shapes:
   - `amount`
   - `solid_weight`
   - `base_snf_percentage`
+  - `fat_snf_ratio` (snapshot from active `DairyInformation.fat_snf_ratio` at the time of creation)
+  - `clr_conversion_factor` (snapshot from active `DairyInformation.clr_conversion_factor` at the time of creation)
+  - `pro_rata_collection_rate_chart` (The pro-rata rate chart used when `is_pro_rata = true`)
   - `is_pro_rata` (bool)
   - `is_raw_collection` (bool)
 
@@ -370,6 +373,7 @@ Main serialized shapes:
   - `customer` (FK id)
   - `customer_name`
   - `base_fat_percentage`, `base_snf_percentage`
+  - `fat_snf_ratio`, `clr_conversion_factor`, `pro_rata_collection_rate_chart`
   - `created_at`, `updated_at`, `is_active`
 
 ### 6.2 List collections
@@ -407,6 +411,16 @@ Key logic / validations:
   - measure & quantities (`measured`, `liters` / `kg`),
   - composition: `fat_percentage`, `snf_percentage`, etc.
 - `base_snf_percentage` must be **between 8.0 and 9.5** (inclusive). Otherwise returns `400`.
+- Snapshot behavior for settings:
+  - On create, if there is an active `DairyInformation` for the user, the current
+    `fat_snf_ratio` and `clr_conversion_factor` are **copied into the collection**
+    (`fat_snf_ratio`, `clr_conversion_factor` fields).
+  - If the request has `is_pro_rata = true` and there is an active
+    `ProRataRateChart` for the user, its `fat_step_up_rates` and
+    `snf_step_down_rates` are **copied into**
+    `pro_rata_collection_rate_chart` as JSON (per-collection snapshot).
+  - When a `Collection` is created from a `RawCollection` (via milk rate add /
+    conversion), the same snapshot rules apply.
 - Wallet-based collection fee check:
   - Reads `settings.COLLECTION_FEE` to check if fee is `ENABLED`.
   - Uses dynamic per-kg rate from `CollectionFeeConfig` model (falling back to `settings.COLLECTION_FEE["PER_KG_RATE"]` if no config exists).
@@ -429,6 +443,35 @@ Edit restrictions (via `Collection.can_edit()` and settings `COLLECTION_EDIT`):
   - Days since creation must be `<= MAX_EDIT_DAYS` (default 7).
 - If constraints violated, returns `400` with clear message and fields `edit_count` / `max_edits` or `days_since_creation` / `max_days`.
 - On actual changes, `edit_count` increments and `last_edited_at` updated.
+  - Changes to `fat_snf_ratio`, `clr_conversion_factor`, or `pro_rata_collection_rate_chart`
+    are treated like any other field change: they only affect that individual
+    collection row and contribute to `edit_count`.
+
+Example: update pro-rata settings for a single collection
+
+- **Request**: `PATCH /collections/123/`
+
+```json
+{
+  "is_pro_rata": true,
+  "fat_snf_ratio": "60/40",
+  "clr_conversion_factor": 0.14,
+  "pro_rata_collection_rate_chart": {
+    "fat_step_up_rates": [
+      { "step": 0.10, "rate": 0.50 },
+      { "step": 0.20, "rate": 1.00 }
+    ],
+    "snf_step_down_rates": [
+      { "step": 0.10, "rate": -0.30 }
+    ]
+  }
+}
+```
+
+Notes:
+
+- This updates the stored pro-rata chart snapshot for collection `123` only.
+- Global `ProRataRateChart` and `DairyInformation` records are **not** modified.
 
 ### 6.6 Delete collection
 
