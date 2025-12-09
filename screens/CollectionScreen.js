@@ -968,9 +968,9 @@ const CollectionScreen = ({ navigation }) => {
   const isNextDisabled = isFlatRateMode
     ? !weight
     : (!weight ||
-       !fatPercent ||
-       (isSnfMode && !snfPercent) ||
-       (isClrMode && isClrInvalid));
+      !fatPercent ||
+      (isSnfMode && !snfPercent) ||
+      (isClrMode && isClrInvalid));
 
   // Add this component for the preview table
   const PreviewTable = ({ navigation }) => {
@@ -1046,11 +1046,11 @@ const CollectionScreen = ({ navigation }) => {
               <Text style={styles.cellText}>
                 {isLitersOnlyMode
                   ? (latestCollection.liters != null
-                      ? parseFloat(latestCollection.liters).toFixed(2)
-                      : '-')
+                    ? parseFloat(latestCollection.liters).toFixed(2)
+                    : '-')
                   : (latestCollection.kg != null
-                      ? parseFloat(latestCollection.kg).toFixed(2)
-                      : '-')}
+                    ? parseFloat(latestCollection.kg).toFixed(2)
+                    : '-')}
               </Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
@@ -1121,7 +1121,9 @@ const CollectionScreen = ({ navigation }) => {
       >
         <View style={styles.baseSnfContent}>
           <Text style={styles.previewLabel}>Base SNF %</Text>
-          <Text style={styles.previewValue}>{previewData?.base_snf_percentage}</Text>
+          <Text style={styles.previewValue}>
+            {previewData?.base_snf_percentage ? parseFloat(previewData.base_snf_percentage).toFixed(2) : '-'}
+          </Text>
           <Icon name="chevron-down" size={20} color="#0D47A1" />
         </View>
 
@@ -1162,7 +1164,7 @@ const CollectionScreen = ({ navigation }) => {
                         styles.baseSnfOptionText,
                         { color: '#E65100', fontWeight: '700' },
                         previewData?.base_snf_percentage === '8.5' && styles.baseSnfOptionTextSelected
-                      ]}>8.5</Text>
+                      ]}>8.50</Text>
                       {previewData?.base_snf_percentage === '8.5' && (
                         <View style={styles.selectedIndicator}>
                           <Icon name="check" size={16} color="#0D47A1" />
@@ -1186,7 +1188,7 @@ const CollectionScreen = ({ navigation }) => {
                           styles.baseSnfOptionText,
                           previewData?.base_snf_percentage === value && styles.baseSnfOptionTextSelected
                         ]}>
-                          {value}
+                          {parseFloat(value).toFixed(2)}
                         </Text>
                         {previewData?.base_snf_percentage === value && (
                           <View style={styles.selectedIndicator}>
@@ -1232,7 +1234,7 @@ const CollectionScreen = ({ navigation }) => {
               }}
             >
               <Text style={[styles.baseSnfToggleText, snf === value && styles.baseSnfToggleTextSelected]}>
-                {value}
+                {parseFloat(value).toFixed(2)}
               </Text>
               {snf === value && (
                 <View style={styles.baseSnfSelectedIndicator} />
@@ -2161,10 +2163,10 @@ const CollectionScreen = ({ navigation }) => {
             {pendingBaseSnf && (
               <>
                 <Text style={styles.baseSnfConfirmMessage}>
-                  {t('confirm base snf change', { value: pendingBaseSnf })}
+                  {t('confirm base snf change', { value: parseFloat(pendingBaseSnf).toFixed(2) })}
                 </Text>
                 <View style={styles.baseSnfValueChip}>
-                  <Text style={styles.baseSnfValueChipText}>{pendingBaseSnf}</Text>
+                  <Text style={styles.baseSnfValueChipText}>{parseFloat(pendingBaseSnf).toFixed(2)}</Text>
                 </View>
                 <Text style={styles.baseSnfConfirmSubtext}>
                   {t('this base snf will be used for calculations')}
@@ -2485,7 +2487,7 @@ const CollectionScreen = ({ navigation }) => {
                           tempBaseSnf === value && styles.changeRatesToggleTextSelected
                         ]}
                       >
-                        {value}
+                        {parseFloat(value).toFixed(2)}
                       </Text>
                     </TouchableOpacity>
                   ))}
