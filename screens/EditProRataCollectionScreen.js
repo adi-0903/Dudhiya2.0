@@ -673,19 +673,25 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
       const collectionChart = response.pro_rata_collection_rate_chart;
       if (collectionChart) {
         const serverFatSteps = Array.isArray(collectionChart.fat_step_up_rates)
-          ? collectionChart.fat_step_up_rates.map((item) => ({
-              threshold: String(item.step ?? ''),
-              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-              id: item.id,
-            }))
+          ? collectionChart.fat_step_up_rates.map((item) => {
+              const stepNum = item.step != null ? Number(item.step) : NaN;
+              return {
+                threshold: !isNaN(stepNum) ? stepNum.toFixed(2) : '',
+                rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                id: item.id,
+              };
+            })
           : [];
 
         const serverSnfSteps = Array.isArray(collectionChart.snf_step_down_rates)
-          ? collectionChart.snf_step_down_rates.map((item) => ({
-              threshold: String(item.step ?? ''),
-              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-              id: item.id,
-            }))
+          ? collectionChart.snf_step_down_rates.map((item) => {
+              const stepNum = item.step != null ? Number(item.step) : NaN;
+              return {
+                threshold: !isNaN(stepNum) ? stepNum.toFixed(2) : '',
+                rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                id: item.id,
+              };
+            })
           : [];
 
         setFatStepUpThresholds(sortFatThresholds(serverFatSteps));
