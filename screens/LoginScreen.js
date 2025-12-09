@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Modal, TouchableWithoutFeedback, Alert, Platform, Keyboard } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import baseStyles from '../styles/LoginStyles';
 import { loginUser, verifyOTP, checkDairyInfoExists, getUserInfo, DEV_MODE } from '../services/api';

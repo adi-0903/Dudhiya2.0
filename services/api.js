@@ -7,13 +7,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Use your machine's IP address for both development and production on physical devices
 // Normal
-//const BASE_URL = "http://dudhiya-backend-fik82q-a7eaae-31-97-60-222.traefik.me/api"; 
+const BASE_URL = "https://dudhiya-backend.netpy.in/api"; 
 
 // MOD
-//const BASE_URL = "http://dudhiya-backend-v104-mod-zpskdt-829829-31-97-60-222.traefik.me/api";
+//const BASE_URL = "https://dudhiya-backendadmin.netpy.in/api";
 
 // TEST
-const BASE_URL = "https://milkpe.app.netpy.in/api";
+//const BASE_URL = "https://dudhiya-backendadmin.netpy.in/api";
 
 // API Endpoints
 const ENDPOINTS = {
@@ -133,7 +133,7 @@ api.interceptors.response.use(
   }
 );
 
-export const DEV_MODE = true;
+export const DEV_MODE = false;
 
 export const loginUser = async (phoneNumber) => {
   if (DEV_MODE) {
