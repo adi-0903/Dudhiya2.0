@@ -2155,18 +2155,34 @@ const ProRataCollectionScreen = ({ navigation }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{t('select animal type')}</Text>
             <View style={styles.animalOptions}>
-              {animalOptions.map((animal) => (
-                <TouchableOpacity
-                  key={animal}
-                  style={styles.animalOption}
-                  onPress={() => {
-                    setSelectedAnimal(animal.toLowerCase());
-                    setShowAnimalModal(false);
-                  }}
-                >
-                  <Text style={styles.animalOptionText}>{animal}</Text>
-                </TouchableOpacity>
-              ))}
+              {animalOptions.map((animal) => {
+                const normalizedOption = animal.toLowerCase().replace(/\s+/g, '');
+                const normalizedSelected = (selectedAnimal || '').toLowerCase().replace(/\s+/g, '');
+                const isSelected = normalizedSelected === normalizedOption;
+
+                return (
+                  <TouchableOpacity
+                    key={animal}
+                    style={[
+                      styles.animalOption,
+                      isSelected && styles.animalOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedAnimal(animal.toLowerCase());
+                      setShowAnimalModal(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.animalOptionText,
+                        isSelected && styles.animalOptionTextSelected,
+                      ]}
+                    >
+                      {animal}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <View style={styles.modalButtonsContainer}>
               <TouchableOpacity 
@@ -3609,6 +3625,15 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
+  animalOptionSelected: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: '#0D47A1',
+  },
+  animalOptionTextSelected: {
+    color: '#0D47A1',
+    fontWeight: '600',
+  },
   formContainer: {
     padding: 15,
     marginTop: 20,  // Consistent spacing
@@ -4557,9 +4582,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFE5E5',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#FFCDD2',
   },
   confirmButton: {
     backgroundColor: '#0D47A1',
@@ -4569,7 +4594,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cancelButtonText: {
-    color: '#666',
+    color: '#D32F2F',
   },
   confirmButtonText: {
     color: '#fff',
