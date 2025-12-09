@@ -3,11 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform } from 're
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+import CollectionTypeSelectorModal from './CollectionTypeSelectorModal';
 
 const BottomNav = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [showCollectionTypeModal, setShowCollectionTypeModal] = useState(false);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -30,36 +32,53 @@ const BottomNav = () => {
   }, []);
   
   return (
-    <View style={[
-      styles.bottomMenu,
-      keyboardVisible && { display: 'none' }  // Hide when keyboard is visible
-    ]}>
-      <TouchableOpacity 
-        style={styles.menuItem}
-        onPress={() => navigation.navigate('Home')}
+    <>
+      <View
+        style={[
+          styles.bottomMenu,
+          keyboardVisible && { display: 'none' } // Hide when keyboard is visible
+        ]}
       >
-        <Icon name="home" size={28} color="#0D47A1" />
-        <Text style={styles.menuText}>{t('home')}</Text>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Icon name="home" size={28} color="#0D47A1" />
+          <Text style={styles.menuText}>{t('home')}</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={[styles.menuItem, styles.addButton]}
-        onPress={() => navigation.navigate('Collection')}
-      >
-        <View style={styles.addButtonInner}>
-          <Icon name="plus" size={32} color="#fff" />
-        </View>
-        <Text style={styles.menuText}>{t('add collection')}</Text>
-      </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.menuItem, styles.addButton]}
+          onPress={() => setShowCollectionTypeModal(true)}
+        >
+          <View style={styles.addButtonInner}>
+            <Icon name="plus" size={32} color="#fff" />
+          </View>
+          <Text style={styles.menuText}>{t('add collection')}</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.menuItem}
-        onPress={() => navigation.navigate('MoreOptions')}
-      >
-        <Icon name="dots-horizontal-circle" size={31} color="#0D47A1" />
-        <Text style={styles.menuText}>{t('more')}</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('MoreOptions')}
+        >
+          <Icon name="dots-horizontal-circle" size={31} color="#0D47A1" />
+          <Text style={styles.menuText}>{t('more')}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <CollectionTypeSelectorModal
+        visible={showCollectionTypeModal}
+        onClose={() => setShowCollectionTypeModal(false)}
+        onSelectStandard={() => {
+          setShowCollectionTypeModal(false);
+          navigation.navigate('Collection');
+        }}
+        onSelectProRata={() => {
+          setShowCollectionTypeModal(false);
+          navigation.navigate('ProRataCollectionScreen');
+        }}
+      />
+    </>
   );
 };
 

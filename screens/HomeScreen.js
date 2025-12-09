@@ -8,6 +8,7 @@ import { getDairyInfo, getWalletBalance, getUserInfo, getCurrentMarketPrice, get
 import BottomNav from '../components/BottomNav';
 import UpdateService from '../utils/updateService';
 import HowToUseApp from '../components/HowToUseApp';
+import CollectionTypeSelectorModal from '../components/CollectionTypeSelectorModal';
 
 const LANGUAGES = {
   'en': 'English',
@@ -41,6 +42,7 @@ const HomeScreen = () => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const textWidth = useRef(0);
   const screenWidth = Dimensions.get('window').width;
+  const [showCollectionTypeModal, setShowCollectionTypeModal] = useState(false);
 
   const isFlatRateType =
     dairyInfo?.rate_type === 'kg_only' || dairyInfo?.rate_type === 'liters_only';
@@ -523,7 +525,7 @@ const HomeScreen = () => {
             <View style={styles.menuRow}>
               <TouchableOpacity 
                 style={[styles.menuBox, !menuItems[2].subtitle && styles.menuBoxCompact]}
-                onPress={() => navigation.navigate(menuItems[2].screen)}
+                onPress={() => setShowCollectionTypeModal(true)}
               >
                 <View style={[styles.iconBox, !menuItems[2].subtitle && styles.iconBoxCompact]}>
                   <Icon name={menuItems[2].icon} size={24} color="#0D47A1" />
@@ -623,6 +625,19 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
       <BottomNav />
+
+      <CollectionTypeSelectorModal
+        visible={showCollectionTypeModal}
+        onClose={() => setShowCollectionTypeModal(false)}
+        onSelectStandard={() => {
+          setShowCollectionTypeModal(false);
+          navigation.navigate('Collection');
+        }}
+        onSelectProRata={() => {
+          setShowCollectionTypeModal(false);
+          navigation.navigate('ProRataCollectionScreen');
+        }}
+      />
 
       {/* Low Wallet Balance Popup */}
       <Modal
