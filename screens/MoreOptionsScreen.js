@@ -330,9 +330,9 @@ const MoreOptionScreen = () => {
           );
         })}
 
-        <View style={{ marginTop: 20 }}>
+        {/* <View style={{ marginTop: 20 }}>
           <HowToUseApp />
-        </View>
+        </View> */}
 
         <View style={styles.appInfoContainer}>
           <TouchableOpacity onPress={handleVersionPress}>

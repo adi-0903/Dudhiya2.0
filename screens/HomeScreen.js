@@ -697,7 +697,7 @@ const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <HowToUseApp autoOpen={route?.params?.autoOpenHowTo} />
+            {/* <HowToUseApp autoOpen={route?.params?.autoOpenHowTo} /> */}
           </View>
         </View>
       </ScrollView>
