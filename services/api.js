@@ -7,13 +7,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Use your machine's IP address for both development and production on physical devices
 // Normal
-//const BASE_URL = "http://dudhiya-backend-fik82q-a7eaae-31-97-60-222.traefik.me/api"; 
+const BASE_URL = "https://dudhiya-backend.netpy.in/api"; 
 
 // MOD
-//const BASE_URL = "http://dudhiya-backend-v104-mod-zpskdt-829829-31-97-60-222.traefik.me/api";
+//const BASE_URL = "https://dudhiya-backendadmin.netpy.in/api";
 
 // TEST
-const BASE_URL = "http://dudhiya-backend-yabopd-2b0695-31-97-60-222.traefik.me/api";
+//const BASE_URL = "https://dudhiya-backendadmin.netpy.in/api";
 
 // API Endpoints
 const ENDPOINTS = {
@@ -133,7 +133,7 @@ api.interceptors.response.use(
   }
 );
 
-export const DEV_MODE = true;
+export const DEV_MODE = false;
 
 export const loginUser = async (phoneNumber) => {
   if (DEV_MODE) {
@@ -322,7 +322,7 @@ export const setMarketPrice = async (price) => {
     if (!price || price <= 0) {
       throw { error: 'Price must be greater than 0' };
     }
-    const response = await api.post(ENDPOINTS.MARKET_PRICES, { price });
+    const response = await api.patch(ENDPOINTS.MARKET_PRICES, { price });
     return response.data;
   } catch (error) {
     throw error;
@@ -340,12 +340,33 @@ export const getRateChart = async () => {
 
 export const updateRateChart = async (data) => {
   try {
-    if (!data.currentRate || data.currentRate <= 0) {
+    const { price, cow_price, buffalo_price } = data;
+
+    const base = parseFloat(price);
+    const cow = cow_price != null && cow_price !== '' ? parseFloat(cow_price) : null;
+    const buffalo = buffalo_price != null && buffalo_price !== '' ? parseFloat(buffalo_price) : null;
+
+    if (isNaN(base) || base <= 0) {
       throw { error: 'Price must be greater than 0' };
     }
-    const response = await api.post(ENDPOINTS.MARKET_PRICES, {
-      price: data.currentRate
-    });
+
+    const payload = { price: base };
+
+    if (cow != null && !isNaN(cow)) {
+      if (cow <= 0) {
+        throw { error: 'Cow price must be greater than 0' };
+      }
+      payload.cow_price = cow;
+    }
+
+    if (buffalo != null && !isNaN(buffalo)) {
+      if (buffalo <= 0) {
+        throw { error: 'Buffalo price must be greater than 0' };
+      }
+      payload.buffalo_price = buffalo;
+    }
+
+    const response = await api.post(ENDPOINTS.MARKET_PRICES, payload);
     return response.data;
   } catch (error) {
     throw error;

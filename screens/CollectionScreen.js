@@ -26,11 +26,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 
 const CollectionScreen = ({ navigation }) => {
+  const ANIMAL_TYPE_STORAGE_KEY = '@selected_animal_type';
+
   const [walletBalance, setWalletBalance] = useState("₹8"); // Replace with actual wallet balance
   const [fat, setFat] = useState('6.5');
   const [snf, setSnf] = useState(DEFAULT_DAIRY_SETTINGS.baseSnf);
   const [currentRate, setCurrentRate] = useState(null);
   const [isLoadingRate, setIsLoadingRate] = useState(true);
+  const [marketPriceData, setMarketPriceData] = useState(null);
   const [showSnfModal, setShowSnfModal] = useState(false);
   const [snfError, setSnfError] = useState('');
   const [selectedTime, setSelectedTime] = useState('morning'); // 'morning' or 'evening'
@@ -75,6 +78,8 @@ const CollectionScreen = ({ navigation }) => {
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
   const [showInputLimitPopup, setShowInputLimitPopup] = useState(false);
   const [inputLimitMessage, setInputLimitMessage] = useState('');
+  const [showAnimalPricePopup, setShowAnimalPricePopup] = useState(false);
+  const [missingAnimalType, setMissingAnimalType] = useState(null);
   const { handleButtonPress } = useKeyboardDismiss();
   // Confirmation modal state for Base SNF toggle
   const [showBaseSnfConfirm, setShowBaseSnfConfirm] = useState(false);
@@ -139,6 +144,78 @@ const CollectionScreen = ({ navigation }) => {
 
     loadSavedLanguage();
   }, [i18n]);
+
+  useEffect(() => {
+    const loadSavedAnimalType = async () => {
+      try {
+        const savedType = await AsyncStorage.getItem(ANIMAL_TYPE_STORAGE_KEY);
+        if (savedType) {
+          setSelectedAnimal(savedType);
+        }
+      } catch (error) {
+        console.error('Error loading saved animal type:', error);
+      }
+    };
+
+    loadSavedAnimalType();
+  }, []);
+
+  useEffect(() => {
+    if (!marketPriceData) {
+      setCurrentRate(0);
+      setShowAnimalPricePopup(false);
+      setMissingAnimalType(null);
+      return;
+    }
+
+    // Always clear any previous animal-specific popup state before recalculating
+    setShowAnimalPricePopup(false);
+    setMissingAnimalType(null);
+
+    const basePrice = parseFloat(marketPriceData.price || '0') || 0;
+    const cowPrice = marketPriceData.cow_price ? parseFloat(marketPriceData.cow_price) : null;
+    const buffaloPrice = marketPriceData.buffalo_price ? parseFloat(marketPriceData.buffalo_price) : null;
+
+    // Resolve the effective rate type from latest dairy settings, falling back to tempRateType
+    const resolvedRateType = (dairyDetails?.rate_type || tempRateType || DEFAULT_DAIRY_SETTINGS.rateType);
+    const flatRate = isFlatRateType(resolvedRateType);
+
+    if (!flatRate) {
+      setCurrentRate(basePrice);
+      return;
+    }
+
+    const normalizedAnimal = (selectedAnimal || '').toLowerCase().replace(/\s+/g, '');
+
+    if (normalizedAnimal === 'cow+buffalo' || normalizedAnimal === 'cow_buffalo' || !normalizedAnimal) {
+      setCurrentRate(basePrice);
+      return;
+    }
+
+    if (normalizedAnimal === 'cow') {
+      if (!cowPrice || isNaN(cowPrice) || cowPrice <= 0) {
+        setCurrentRate(0);
+        setMissingAnimalType('cow');
+        setShowAnimalPricePopup(true);
+        return;
+      }
+      setCurrentRate(cowPrice);
+      return;
+    }
+
+    if (normalizedAnimal === 'buffalo') {
+      if (!buffaloPrice || isNaN(buffaloPrice) || buffaloPrice <= 0) {
+        setCurrentRate(0);
+        setMissingAnimalType('buffalo');
+        setShowAnimalPricePopup(true);
+        return;
+      }
+      setCurrentRate(buffaloPrice);
+      return;
+    }
+
+    setCurrentRate(basePrice);
+  }, [marketPriceData, selectedAnimal, tempRateType, dairyDetails]);
 
   // Add useFocusEffect to fetch rate when screen comes into focus
   useFocusEffect(
@@ -274,10 +351,14 @@ const CollectionScreen = ({ navigation }) => {
     try {
       setIsLoadingRate(true);
       const response = await getCurrentMarketPrice();
-      if (response && response.price) {
-        setCurrentRate(response.price);
+      if (response) {
+        setMarketPriceData(response);
+      } else {
+        setMarketPriceData(null);
+        setCurrentRate(0);
       }
     } catch (error) {
+      setMarketPriceData(null);
       setCurrentRate(0);
     } finally {
       setIsLoadingRate(false);
@@ -945,8 +1026,6 @@ const CollectionScreen = ({ navigation }) => {
     }
   }, [clr, fatPercent, selectedRadios.clr, clrConversionFactor]);
 
-  console.log('Current Rate:', currentRate); // Debugging log
-
   const isFlatRateMode = isFlatRateType(tempRateType);
   const isKgOnlyMode = tempRateType === 'kg_only';
   const isLitersOnlyMode = tempRateType === 'liters_only';
@@ -968,9 +1047,9 @@ const CollectionScreen = ({ navigation }) => {
   const isNextDisabled = isFlatRateMode
     ? !weight
     : (!weight ||
-       !fatPercent ||
-       (isSnfMode && !snfPercent) ||
-       (isClrMode && isClrInvalid));
+      !fatPercent ||
+      (isSnfMode && !snfPercent) ||
+      (isClrMode && isClrInvalid));
 
   // Add this component for the preview table
   const PreviewTable = ({ navigation }) => {
@@ -1046,11 +1125,11 @@ const CollectionScreen = ({ navigation }) => {
               <Text style={styles.cellText}>
                 {isLitersOnlyMode
                   ? (latestCollection.liters != null
-                      ? parseFloat(latestCollection.liters).toFixed(2)
-                      : '-')
+                    ? parseFloat(latestCollection.liters).toFixed(2)
+                    : '-')
                   : (latestCollection.kg != null
-                      ? parseFloat(latestCollection.kg).toFixed(2)
-                      : '-')}
+                    ? parseFloat(latestCollection.kg).toFixed(2)
+                    : '-')}
               </Text>
             </View>
             <View style={[styles.cell, { flex: 1 }]}>
@@ -1121,7 +1200,9 @@ const CollectionScreen = ({ navigation }) => {
       >
         <View style={styles.baseSnfContent}>
           <Text style={styles.previewLabel}>Base SNF %</Text>
-          <Text style={styles.previewValue}>{previewData?.base_snf_percentage}</Text>
+          <Text style={styles.previewValue}>
+            {previewData?.base_snf_percentage ? parseFloat(previewData.base_snf_percentage).toFixed(2) : '-'}
+          </Text>
           <Icon name="chevron-down" size={20} color="#0D47A1" />
         </View>
 
@@ -1162,7 +1243,7 @@ const CollectionScreen = ({ navigation }) => {
                         styles.baseSnfOptionText,
                         { color: '#E65100', fontWeight: '700' },
                         previewData?.base_snf_percentage === '8.5' && styles.baseSnfOptionTextSelected
-                      ]}>8.5</Text>
+                      ]}>8.50</Text>
                       {previewData?.base_snf_percentage === '8.5' && (
                         <View style={styles.selectedIndicator}>
                           <Icon name="check" size={16} color="#0D47A1" />
@@ -1186,7 +1267,7 @@ const CollectionScreen = ({ navigation }) => {
                           styles.baseSnfOptionText,
                           previewData?.base_snf_percentage === value && styles.baseSnfOptionTextSelected
                         ]}>
-                          {value}
+                          {parseFloat(value).toFixed(2)}
                         </Text>
                         {previewData?.base_snf_percentage === value && (
                           <View style={styles.selectedIndicator}>
@@ -1232,7 +1313,7 @@ const CollectionScreen = ({ navigation }) => {
               }}
             >
               <Text style={[styles.baseSnfToggleText, snf === value && styles.baseSnfToggleTextSelected]}>
-                {value}
+                {parseFloat(value).toFixed(2)}
               </Text>
               {snf === value && (
                 <View style={styles.baseSnfSelectedIndicator} />
@@ -1267,18 +1348,52 @@ const CollectionScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>{t('collection')}</Text>
       </View>
 
-      {/* Popup Card for Adding Milk Rate */}
-      {currentRate === 0 && (
+      {/* Popup Card for Adding Milk Rate (no rate set at all) */}
+      {currentRate === 0 && !showAnimalPricePopup && (
         <View style={styles.popupCardOverlay}>
           <View style={styles.popupCard}>
             <View style={styles.popupIconContainer}>
               <Icon name="alert-circle-outline" style={styles.iconStyle} />
             </View>
-            <Text style={styles.popupTitle}>Milk Rate Required</Text>
-            <Text style={styles.popupText}>Please set the milk rate before adding collection.</Text>
+            <Text style={styles.popupTitle}>{t('milk rate required')}</Text>
+            <Text style={styles.popupText}>{t('please set the milk rate before adding collection.')}</Text>
             <TouchableOpacity
               style={styles.addRateButton}
               onPress={() => {
+                navigation.navigate('RateChart');
+              }}
+            >
+              <Text style={styles.addRateButtonText}>{t('set milk rate')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Popup Card for missing animal-specific milk rate */}
+      {showAnimalPricePopup && (
+        <View style={styles.popupCardOverlay}>
+          <View style={styles.popupCard}>
+            <View style={styles.popupIconContainer}>
+              <Icon name="alert-circle-outline" style={styles.iconStyle} />
+            </View>
+            <Text style={styles.popupTitle}>
+              {missingAnimalType === 'cow'
+                ? t('cow milk rate required')
+                : missingAnimalType === 'buffalo'
+                  ? t('buffalo milk rate required')
+                  : t('milk rate required')}
+            </Text>
+            <Text style={styles.popupText}>
+              {missingAnimalType === 'cow'
+                ? t('please set the cow milk rate before adding collection.')
+                : missingAnimalType === 'buffalo'
+                  ? t('please set the buffalo milk rate before adding collection.')
+                  : t('please set the milk rate before adding collection.')}
+            </Text>
+            <TouchableOpacity
+              style={styles.addRateButton}
+              onPress={() => {
+                setShowAnimalPricePopup(false);
                 navigation.navigate('RateChart');
               }}
             >
@@ -1698,18 +1813,38 @@ const CollectionScreen = ({ navigation }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{t('select animal type')}</Text>
             <View style={styles.animalOptions}>
-              {animalOptions.map((animal) => (
-                <TouchableOpacity
-                  key={animal}
-                  style={styles.animalOption}
-                  onPress={() => {
-                    setSelectedAnimal(animal.toLowerCase());
-                    setShowAnimalModal(false);
-                  }}
-                >
-                  <Text style={styles.animalOptionText}>{animal}</Text>
-                </TouchableOpacity>
-              ))}
+              {animalOptions.map((animal) => {
+                const normalizedOption = animal.toLowerCase().replace(/\s+/g, '');
+                const normalizedSelected = (selectedAnimal || '').toLowerCase().replace(/\s+/g, '');
+                const isSelected = normalizedSelected === normalizedOption;
+
+                return (
+                  <TouchableOpacity
+                    key={animal}
+                    style={[
+                      styles.animalOption,
+                      isSelected && styles.animalOptionSelected,
+                    ]}
+                    onPress={() => {
+                      const value = animal.toLowerCase();
+                      setSelectedAnimal(value);
+                      AsyncStorage.setItem(ANIMAL_TYPE_STORAGE_KEY, value).catch((error) => {
+                        console.error('Error saving animal type:', error);
+                      });
+                      setShowAnimalModal(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.animalOptionText,
+                        isSelected && styles.animalOptionTextSelected,
+                      ]}
+                    >
+                      {animal}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <View style={styles.modalButtonsContainer}>
               <TouchableOpacity
@@ -2161,10 +2296,10 @@ const CollectionScreen = ({ navigation }) => {
             {pendingBaseSnf && (
               <>
                 <Text style={styles.baseSnfConfirmMessage}>
-                  {t('confirm base snf change', { value: pendingBaseSnf })}
+                  {t('confirm base snf change', { value: parseFloat(pendingBaseSnf).toFixed(2) })}
                 </Text>
                 <View style={styles.baseSnfValueChip}>
-                  <Text style={styles.baseSnfValueChipText}>{pendingBaseSnf}</Text>
+                  <Text style={styles.baseSnfValueChipText}>{parseFloat(pendingBaseSnf).toFixed(2)}</Text>
                 </View>
                 <Text style={styles.baseSnfConfirmSubtext}>
                   {t('this base snf will be used for calculations')}
@@ -2485,7 +2620,7 @@ const CollectionScreen = ({ navigation }) => {
                           tempBaseSnf === value && styles.changeRatesToggleTextSelected
                         ]}
                       >
-                        {value}
+                        {parseFloat(value).toFixed(2)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -2896,6 +3031,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  animalOptionSelected: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: '#0D47A1',
+  },
+  animalOptionTextSelected: {
+    color: '#0D47A1',
+    fontWeight: '600',
   },
   formContainer: {
     padding: 15,
@@ -3738,9 +3882,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFE5E5',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#FFCDD2',
   },
   confirmButton: {
     backgroundColor: '#0D47A1',
@@ -3750,7 +3894,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cancelButtonText: {
-    color: '#666',
+    color: '#D32F2F',
   },
   confirmButtonText: {
     color: '#fff',

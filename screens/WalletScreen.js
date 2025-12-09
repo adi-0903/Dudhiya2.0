@@ -266,7 +266,7 @@ const WalletScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.walletInfoButtonContainer}>
+            {/* <View style={styles.walletInfoButtonContainer}>
               <TouchableOpacity
                 style={styles.walletInfoButton}
                 onPress={() => setShowVideoModal(true)}
@@ -274,7 +274,7 @@ const WalletScreen = ({ navigation }) => {
                 <Icon name="play-circle" size={18} color="#0D47A1" />
                 <Text style={styles.walletInfoButtonText}>{t('how wallet works')}</Text>
               </TouchableOpacity>
-            </View>
+            </View> */}
 
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>

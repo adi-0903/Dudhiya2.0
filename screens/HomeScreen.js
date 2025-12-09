@@ -8,6 +8,7 @@ import { getDairyInfo, getWalletBalance, getUserInfo, getCurrentMarketPrice, get
 import BottomNav from '../components/BottomNav';
 import UpdateService from '../utils/updateService';
 import HowToUseApp from '../components/HowToUseApp';
+import CollectionTypeSelectorModal from '../components/CollectionTypeSelectorModal';
 
 const LANGUAGES = {
   'en': 'English',
@@ -16,6 +17,7 @@ const LANGUAGES = {
 };
 
 const HomeScreen = () => {
+  const ANIMAL_TYPE_STORAGE_KEY = '@selected_animal_type';
   const navigation = useNavigation();
   const route = useRoute();
   const { t, i18n } = useTranslation();
@@ -25,6 +27,7 @@ const HomeScreen = () => {
   const [walletBalance, setWalletBalance] = useState(null);
   const [showLowWalletPopup, setShowLowWalletPopup] = useState(false);
   const [currentRate, setCurrentRate] = useState(null);
+  const [marketPriceData, setMarketPriceData] = useState(null);
   const [isLoadingRate, setIsLoadingRate] = useState(true);
   const [isLoadingDairyInfo, setIsLoadingDairyInfo] = useState(true);
   const [supportPhoneNumber] = useState('+91 7454860294');
@@ -41,6 +44,8 @@ const HomeScreen = () => {
   const scrollX = useRef(new Animated.Value(0)).current;
   const textWidth = useRef(0);
   const screenWidth = Dimensions.get('window').width;
+  const [showCollectionTypeModal, setShowCollectionTypeModal] = useState(false);
+  const [selectedAnimal, setSelectedAnimal] = useState('cow+buffalo');
 
   const isFlatRateType =
     dairyInfo?.rate_type === 'kg_only' || dairyInfo?.rate_type === 'liters_only';
@@ -104,6 +109,17 @@ const HomeScreen = () => {
         }
       };
 
+      const loadSelectedAnimal = async () => {
+        try {
+          const savedType = await AsyncStorage.getItem(ANIMAL_TYPE_STORAGE_KEY);
+          if (savedType) {
+            setSelectedAnimal(savedType);
+          }
+        } catch (error) {
+          console.error('Error loading selected animal type on Home focus:', error);
+        }
+      };
+
       const fetchLanguage = async () => {
         try {
           const savedLanguage = await AsyncStorage.getItem('@selected_language');
@@ -128,12 +144,28 @@ const HomeScreen = () => {
 
       resetBaseSnf();
       fetchLanguage();
+      loadSelectedAnimal();
       fetchData();
       fetchUserInfo();
       fetchCreditTransactions();
       checkForUpdates();
     }, [i18n])
   );
+
+  useEffect(() => {
+    const loadSelectedAnimal = async () => {
+      try {
+        const savedType = await AsyncStorage.getItem(ANIMAL_TYPE_STORAGE_KEY);
+        if (savedType) {
+          setSelectedAnimal(savedType);
+        }
+      } catch (error) {
+        console.error('Error loading selected animal type:', error);
+      }
+    };
+
+    loadSelectedAnimal();
+  }, []);
 
   const fetchData = async () => {
     setIsLoadingRate(true);
@@ -142,13 +174,15 @@ const HomeScreen = () => {
       // Split these into separate try-catch blocks so one failing doesn't affect the other
       try {
         const rateResponse = await getCurrentMarketPrice();
-        if (rateResponse && rateResponse.price) {
-          setCurrentRate(rateResponse.price);
+        if (rateResponse) {
+          setMarketPriceData(rateResponse);
         } else {
+          setMarketPriceData(null);
           setCurrentRate(0);
         }
       } catch (error) {
         console.log('Error fetching milk rate:', error);
+        setMarketPriceData(null);
         setCurrentRate(0);
       }
 
@@ -223,6 +257,51 @@ const HomeScreen = () => {
       console.error('Error fetching credit transactions:', error);
     }
   };
+
+  useEffect(() => {
+    if (!marketPriceData) {
+      setCurrentRate(0);
+      return;
+    }
+
+    const basePrice = parseFloat(marketPriceData.price || '0') || 0;
+    const cowPrice = marketPriceData.cow_price ? parseFloat(marketPriceData.cow_price) : null;
+    const buffaloPrice = marketPriceData.buffalo_price ? parseFloat(marketPriceData.buffalo_price) : null;
+
+    const flatRate = isFlatRateType;
+
+    if (!flatRate) {
+      setCurrentRate(basePrice);
+      return;
+    }
+
+    const normalizedAnimal = (selectedAnimal || '').toLowerCase().replace(/\s+/g, '');
+
+    if (normalizedAnimal === 'cow+buffalo' || normalizedAnimal === 'cow_buffalo' || !normalizedAnimal) {
+      setCurrentRate(basePrice);
+      return;
+    }
+
+    if (normalizedAnimal === 'cow') {
+      if (!cowPrice || isNaN(cowPrice) || cowPrice <= 0) {
+        setCurrentRate(0);
+        return;
+      }
+      setCurrentRate(cowPrice);
+      return;
+    }
+
+    if (normalizedAnimal === 'buffalo') {
+      if (!buffaloPrice || isNaN(buffaloPrice) || buffaloPrice <= 0) {
+        setCurrentRate(0);
+        return;
+      }
+      setCurrentRate(buffaloPrice);
+      return;
+    }
+
+    setCurrentRate(basePrice);
+  }, [marketPriceData, selectedAnimal, dairyInfo]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -618,11 +697,24 @@ const HomeScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <HowToUseApp autoOpen={route?.params?.autoOpenHowTo} />
+            {/* <HowToUseApp autoOpen={route?.params?.autoOpenHowTo} /> */}
           </View>
         </View>
       </ScrollView>
       <BottomNav />
+
+      <CollectionTypeSelectorModal
+        visible={showCollectionTypeModal}
+        onClose={() => setShowCollectionTypeModal(false)}
+        onSelectStandard={() => {
+          setShowCollectionTypeModal(false);
+          navigation.navigate('Collection');
+        }}
+        onSelectProRata={() => {
+          setShowCollectionTypeModal(false);
+          navigation.navigate('ProRataCollectionScreen');
+        }}
+      />
 
       {/* Low Wallet Balance Popup */}
       <Modal

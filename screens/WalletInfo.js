@@ -158,13 +158,13 @@ const WalletInfo = () => {
           <Text style={styles.introText}>
             {t('learn wallet system')}
           </Text>
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={styles.videoButton}
             onPress={() => setShowVideoModal(true)}
           >
             <Icon name="play-circle" size={22} color="#fff" />
             <Text style={styles.videoButtonText}>{t('how wallet works')}</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {!isFeeLoading && collectionFeeConfig && (

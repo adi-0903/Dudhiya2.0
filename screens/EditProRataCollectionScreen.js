@@ -255,6 +255,15 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
     });
   };
 
+  const hasIncompleteThresholdRow = (thresholds) => {
+    if (!Array.isArray(thresholds)) return false;
+    return thresholds.some((t) => {
+      const thresholdFilled = String(t?.threshold ?? '').trim() !== '';
+      const rateFilled = String(t?.rate ?? '').trim() !== '';
+      return (thresholdFilled || rateFilled) && !(thresholdFilled && rateFilled);
+    });
+  };
+
   const isRateChartSet = isValidThresholdList(fatStepUpThresholds) && isValidThresholdList(snfStepDownThresholds);
 
   // Helpers: resolve applied rate from Fat thresholds (value >= threshold)
@@ -664,19 +673,25 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
       const collectionChart = response.pro_rata_collection_rate_chart;
       if (collectionChart) {
         const serverFatSteps = Array.isArray(collectionChart.fat_step_up_rates)
-          ? collectionChart.fat_step_up_rates.map((item) => ({
-              threshold: String(item.step ?? ''),
-              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-              id: item.id,
-            }))
+          ? collectionChart.fat_step_up_rates.map((item) => {
+              const stepNum = item.step != null ? Number(item.step) : NaN;
+              return {
+                threshold: !isNaN(stepNum) ? stepNum.toFixed(2) : '',
+                rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                id: item.id,
+              };
+            })
           : [];
 
         const serverSnfSteps = Array.isArray(collectionChart.snf_step_down_rates)
-          ? collectionChart.snf_step_down_rates.map((item) => ({
-              threshold: String(item.step ?? ''),
-              rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
-              id: item.id,
-            }))
+          ? collectionChart.snf_step_down_rates.map((item) => {
+              const stepNum = item.step != null ? Number(item.step) : NaN;
+              return {
+                threshold: !isNaN(stepNum) ? stepNum.toFixed(2) : '',
+                rate: item?.rate != null ? Number(Math.abs(item.rate)).toFixed(2) : '',
+                id: item.id,
+              };
+            })
           : [];
 
         setFatStepUpThresholds(sortFatThresholds(serverFatSteps));
@@ -2341,7 +2356,22 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                   <Text style={[styles.modalButtonText, styles.cancelButtonText]}>{t('cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.modalButton, styles.confirmButton]}
+                  style={[
+                    styles.modalButton,
+                    styles.confirmButton,
+                    (
+                      hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                      hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                      !isValidThresholdList(tempFatStepUpThresholds) ||
+                      !isValidThresholdList(tempSnfStepDownThresholds)
+                    ) && styles.disabledButton,
+                  ]}
+                  disabled={
+                    hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                    hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                    !isValidThresholdList(tempFatStepUpThresholds) ||
+                    !isValidThresholdList(tempSnfStepDownThresholds)
+                  }
                   onPress={() => {
                     // Apply temporary settings to main state without hitting global endpoints
                     setFatSnfRatio(tempFatSnfRatio);

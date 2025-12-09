@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Platform, AsyncStorage, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Platform, Modal } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import BottomNav from '../../components/BottomNav';

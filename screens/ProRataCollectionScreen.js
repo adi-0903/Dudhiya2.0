@@ -17,6 +17,7 @@ import {
   Dimensions,
   Animated
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getCurrentMarketPrice, getAllCustomers, getCustomers, createCollection, getCollections, getDairyInfo, updateDairyInfo, getProRataRateChart, upsertProRataRateChart } from '../services/api';
@@ -337,6 +338,15 @@ const ProRataCollectionScreen = ({ navigation }) => {
       const threshold = parseFloat(t?.threshold);
       const rate = parseFloat(t?.rate);
       return !isNaN(threshold) && !isNaN(rate);
+    });
+  };
+
+  const hasIncompleteThresholdRow = (thresholds) => {
+    if (!Array.isArray(thresholds)) return false;
+    return thresholds.some((t) => {
+      const thresholdFilled = String(t?.threshold ?? '').trim() !== '';
+      const rateFilled = String(t?.rate ?? '').trim() !== '';
+      return (thresholdFilled || rateFilled) && !(thresholdFilled && rateFilled);
     });
   };
 
@@ -1559,7 +1569,11 @@ const ProRataCollectionScreen = ({ navigation }) => {
       >
         <View style={styles.baseSnfContent}>
           <Text style={styles.previewLabel}>Base SNF %</Text>
-          <Text style={styles.previewValue}>{previewData?.base_snf_percentage}</Text>
+          <Text style={styles.previewValue}>
+            {previewData?.base_snf_percentage
+              ? parseFloat(previewData.base_snf_percentage).toFixed(2)
+              : '-'}
+          </Text>
           <Icon name="chevron-down" size={20} color="#0D47A1" />
         </View>
 
@@ -1670,7 +1684,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
               }}
             >
               <Text style={[styles.baseSnfToggleText, snf === value && styles.baseSnfToggleTextSelected]}>
-                {value}
+                {parseFloat(value).toFixed(2)}
               </Text>
               {snf === value && (
                 <View style={styles.baseSnfSelectedIndicator} />
@@ -2142,18 +2156,34 @@ const ProRataCollectionScreen = ({ navigation }) => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>{t('select animal type')}</Text>
             <View style={styles.animalOptions}>
-              {animalOptions.map((animal) => (
-                <TouchableOpacity
-                  key={animal}
-                  style={styles.animalOption}
-                  onPress={() => {
-                    setSelectedAnimal(animal.toLowerCase());
-                    setShowAnimalModal(false);
-                  }}
-                >
-                  <Text style={styles.animalOptionText}>{animal}</Text>
-                </TouchableOpacity>
-              ))}
+              {animalOptions.map((animal) => {
+                const normalizedOption = animal.toLowerCase().replace(/\s+/g, '');
+                const normalizedSelected = (selectedAnimal || '').toLowerCase().replace(/\s+/g, '');
+                const isSelected = normalizedSelected === normalizedOption;
+
+                return (
+                  <TouchableOpacity
+                    key={animal}
+                    style={[
+                      styles.animalOption,
+                      isSelected && styles.animalOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedAnimal(animal.toLowerCase());
+                      setShowAnimalModal(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.animalOptionText,
+                        isSelected && styles.animalOptionTextSelected,
+                      ]}
+                    >
+                      {animal}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <View style={styles.modalButtonsContainer}>
               <TouchableOpacity 
@@ -2611,7 +2641,22 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 <Text style={[styles.modalButtonText, styles.cancelButtonText]}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]}
+                style={[
+                  styles.modalButton,
+                  styles.confirmButton,
+                  (
+                    hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                    hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                    !isValidThresholdList(tempFatStepUpThresholds) ||
+                    !isValidThresholdList(tempSnfStepDownThresholds)
+                  ) && styles.disabledButton,
+                ]}
+                disabled={
+                  hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                  hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                  !isValidThresholdList(tempFatStepUpThresholds) ||
+                  !isValidThresholdList(tempSnfStepDownThresholds)
+                }
                 onPress={handleButtonPress(async () => {
                   try {
                     const payload = {
@@ -2787,10 +2832,10 @@ const ProRataCollectionScreen = ({ navigation }) => {
             {pendingBaseSnf && (
               <>
                 <Text style={styles.baseSnfConfirmMessage}>
-                  {t('confirm base snf change', { value: pendingBaseSnf })}
+                  {t('confirm base snf change', { value: parseFloat(pendingBaseSnf).toFixed(2) })}
                 </Text>
                 <View style={styles.baseSnfValueChip}>
-                  <Text style={styles.baseSnfValueChipText}>{pendingBaseSnf}</Text>
+                  <Text style={styles.baseSnfValueChipText}>{parseFloat(pendingBaseSnf).toFixed(2)}</Text>
                 </View>
                 <Text style={styles.baseSnfConfirmSubtext}>
                   {t('this base snf will be used for calculations')}
@@ -3111,7 +3156,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
                             tempBaseSnf === value && styles.changeRatesToggleTextSelected
                           ]}
                         >
-                          {value}
+                          {parseFloat(value).toFixed(2)}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -3580,6 +3625,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  animalOptionSelected: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: '#0D47A1',
+  },
+  animalOptionTextSelected: {
+    color: '#0D47A1',
+    fontWeight: '600',
   },
   formContainer: {
     padding: 15,
@@ -4529,9 +4583,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#FFE5E5',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#FFCDD2',
   },
   confirmButton: {
     backgroundColor: '#0D47A1',
@@ -4541,7 +4595,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   cancelButtonText: {
-    color: '#666',
+    color: '#D32F2F',
   },
   confirmButtonText: {
     color: '#fff',

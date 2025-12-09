@@ -255,6 +255,12 @@
       "dairy address": "ಡೈರಿ ವಿಳಾಸ",
       "rate type": "ದರ ಪ್ರಕಾರ",
       "you have not set milk rate. please set the milk rate.": "ನೀವು ಹಾಲಿನ ದರವನ್ನು ನಿಗದಿಪಡಿಸಿಲ್ಲ. ದಯವಿಟ್ಟು ಹಾಲಿನ ದರವನ್ನು ನಿಗದಿಪಡಿಸಿ.",
+      "milk rate required": "ಹಾಲಿನ ದರ ಅಗತ್ಯವಿದೆ",
+      "please set the milk rate before adding collection.": "ಸಂಗ್ರಹ ಸೇರಿಸುವ ಮೊದಲು ದಯವಿಟ್ಟು ಹಾಲಿನ ದರವನ್ನು ನಿಗದಿಪಡಿಸಿ.",
+      "cow milk rate required": "ಹಸುವಿನ ಹಾಲಿನ ದರ ಅಗತ್ಯವಿದೆ",
+      "buffalo milk rate required": "ಎಮ್ಮೆಯ ಹಾಲಿನ ದರ ಅಗತ್ಯವಿದೆ",
+      "please set the cow milk rate before adding collection.": "ಸಂಗ್ರಹ ಸೇರಿಸುವ ಮೊದಲು ದಯವಿಟ್ಟು ಹಸುವಿನ ಹಾಲಿನ ದರವನ್ನು ನಿಗದಿಪಡಿಸಿ.",
+      "please set the buffalo milk rate before adding collection.": "ಸಂಗ್ರಹ ಸೇರಿಸುವ ಮೊದಲು ದಯವಿಟ್ಟು ಎಮ್ಮೆಯ ಹಾಲಿನ ದರವನ್ನು ನಿಗದಿಪಡಿಸಿ.",
   
       "enter dairy name": "ಡೈರಿ ಹೆಸರು ನಮೂದಿಸಿ",
       "enter dairy address": "ಡೈರಿ ವಿಳಾಸ ನಮೂದಿಸಿ",
@@ -422,6 +428,8 @@
       "pro-rata reports": "ಪ್ರೊ-ರಾಟಾ ವರದಿಗಳು",
       "view pro-rata report": "ಪ್ರೊ-ರಾಟಾ ವರದಿಯನ್ನು ವೀಕ್ಷಿಸಿ",
       "pro-rata": "ಪ್ರೊ-ರಾಟಾ",
+      "standard collection label": "ಸ್ಟ್ಯಾಂಡರ್ಡ್",
+      "pro-rata label": "ಪ್ರೊ ರಾಟಾ",
 
       "how to use this app?": "ಈ ಆಪ್ ಅನ್ನು ಬಳಸುವುದು ಹೇಗೆ?",
       "how to add collections": "ಸಂಗ್ರಹಗಳನ್ನು ಹೇಗೆ ಸೇರಿಸಬೇಕು?",

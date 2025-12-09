@@ -20,7 +20,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const RateChartScreen = () => {
   const navigation = useNavigation();
-  const [currentRate, setCurrentRate] = useState('0');
+  const [baseRate, setBaseRate] = useState('0');
+  const [cowRate, setCowRate] = useState('');
+  const [buffaloRate, setBuffaloRate] = useState('');
+  const [selectedAnimal, setSelectedAnimal] = useState('cow+buffalo');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,11 +44,25 @@ const RateChartScreen = () => {
     loadSavedLanguage();
   }, [i18n]);
 
+  useEffect(() => {
+    const loadSelectedAnimal = async () => {
+      try {
+        const savedType = await AsyncStorage.getItem('@selected_animal_type');
+        if (savedType) {
+          setSelectedAnimal(savedType);
+        }
+      } catch (error) {
+        console.error('Error loading selected animal type:', error);
+      }
+    };
+
+    loadSelectedAnimal();
+  }, []);
+
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       fetchCurrentRate();
-      fetchRateChart();
     }, [])
   );
 
@@ -54,71 +71,158 @@ const RateChartScreen = () => {
       setIsLoading(true);
       const response = await getCurrentMarketPrice();
       if (response && response.price) {
-        setCurrentRate(response.price.toString());
+        setBaseRate(response.price.toString());
+        setCowRate(response.cow_price ? response.cow_price.toString() : '');
+        setBuffaloRate(response.buffalo_price ? response.buffalo_price.toString() : '');
+      } else {
+        setBaseRate('0');
+        setCowRate('');
+        setBuffaloRate('');
       }
     } catch (error) {
       console.error('Error fetching current rate:', error);
-      setCurrentRate('0');
+      setBaseRate('0');
+      setCowRate('');
+      setBuffaloRate('');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchRateChart = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getRateChart();
-      if (response?.currentRate) {
-        setCurrentRate(response.currentRate.toString());
-      }
-    } catch (error) {
-      console.error('Error fetching rate chart:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRateChange = (text) => {
+  const sanitizeDecimalInput = (text) => {
     // Remove any non-numeric characters except decimal point
     const sanitizedText = text.replace(/[^0-9.]/g, '');
     
     // Ensure only one decimal point
     const decimalCount = (sanitizedText.match(/\./g) || []).length;
     if (decimalCount > 1) {
-      return;
+      return '';
     }
     
     // Limit to 2 decimal places
     if (sanitizedText.includes('.')) {
       const [whole, decimal] = sanitizedText.split('.');
       if (decimal && decimal.length > 2) {
-        return;
+        return `${whole}.${decimal.slice(0, 2)}`;
       }
     }
-    
-    // Update state with sanitized value
-    setCurrentRate(sanitizedText);
+    return sanitizedText;
+  };
+
+  const getActiveRateKey = () => {
+    const normalized = (selectedAnimal || '').toLowerCase().replace(/\s+/g, '');
+    if (normalized === 'cow') return 'cow';
+    if (normalized === 'buffalo') return 'buffalo';
+    return 'base';
+  };
+
+  const handleDisplayedRateChange = (text) => {
+    const value = sanitizeDecimalInput(text);
+    const key = getActiveRateKey();
+    if (key === 'cow') {
+      setCowRate(value);
+    } else if (key === 'buffalo') {
+      setBuffaloRate(value);
+    } else {
+      setBaseRate(value);
+    }
   };
 
   const handleSave = async () => {
-    if (!currentRate) {
-      Alert.alert(t('error'), t('please enter a milk rate'));
-      return;
-    }
+    const activeKey = getActiveRateKey();
 
-    const rate = parseFloat(currentRate);
-    if (isNaN(rate) || rate <= 0) {
-      Alert.alert(t('error'), t('please enter a valid milk rate greater than 0'));
-      return;
-    }
+    const parsedBaseInput = baseRate ? parseFloat(baseRate) : NaN;
+    const parsedCowInput = cowRate ? parseFloat(cowRate) : NaN;
+    const parsedBuffaloInput = buffaloRate ? parseFloat(buffaloRate) : NaN;
 
     try {
       setIsSaving(true);
-      await updateRateChart({
-        currentRate: rate
-      });
+      // Fetch latest existing rates so we preserve other animal values
+      let existingPrice = NaN;
+      let existingCow = NaN;
+      let existingBuffalo = NaN;
+
+      try {
+        const existing = await getCurrentMarketPrice();
+        if (existing) {
+          if (existing.price != null) {
+            existingPrice = parseFloat(existing.price);
+          }
+          if (existing.cow_price != null) {
+            existingCow = parseFloat(existing.cow_price);
+          }
+          if (existing.buffalo_price != null) {
+            existingBuffalo = parseFloat(existing.buffalo_price);
+          }
+        }
+      } catch (e) {
+        // If fetch fails, fall back to local state
+        if (!isNaN(parsedBaseInput)) existingPrice = parsedBaseInput;
+        if (!isNaN(parsedCowInput)) existingCow = parsedCowInput;
+        if (!isNaN(parsedBuffaloInput)) existingBuffalo = parsedBuffaloInput;
+      }
+
+      let priceToSend = existingPrice;
+      let cowToSend = existingCow;
+      let buffaloToSend = existingBuffalo;
+
+      if (activeKey === 'cow') {
+        // Validate cow rate only
+        if (isNaN(parsedCowInput) || parsedCowInput <= 0) {
+          Alert.alert(t('error'), t('please enter a valid milk rate greater than 0'));
+          return;
+        }
+
+        // Require an already-set base price; do NOT derive it from cow
+        if (isNaN(priceToSend) || priceToSend <= 0) {
+          Alert.alert(t('error'), 'Please set the common milk rate (Cow+Buffalo) first.');
+          return;
+        }
+
+        cowToSend = parsedCowInput;
+      } else if (activeKey === 'buffalo') {
+        // Validate buffalo rate only
+        if (isNaN(parsedBuffaloInput) || parsedBuffaloInput <= 0) {
+          Alert.alert(t('error'), t('please enter a valid milk rate greater than 0'));
+          return;
+        }
+
+        // Require an already-set base price; do NOT derive it from buffalo
+        if (isNaN(priceToSend) || priceToSend <= 0) {
+          Alert.alert(t('error'), 'Please set the common milk rate (Cow+Buffalo) first.');
+          return;
+        }
+
+        buffaloToSend = parsedBuffaloInput;
+      } else {
+        // Cow+Buffalo mode: only update base price, but keep existing cow/buffalo values
+        if (isNaN(parsedBaseInput) || parsedBaseInput <= 0) {
+          Alert.alert(t('error'), t('please enter a valid milk rate greater than 0'));
+          return;
+        }
+
+        priceToSend = parsedBaseInput;
+      }
+
+      if (isNaN(priceToSend) || priceToSend <= 0) {
+        Alert.alert(t('error'), t('please enter a valid milk rate greater than 0'));
+        return;
+      }
+
+      const payload = { price: priceToSend.toString() };
+
+      if (!isNaN(cowToSend) && cowToSend > 0) {
+        payload.cow_price = cowToSend.toString();
+      }
+
+      if (!isNaN(buffaloToSend) && buffaloToSend > 0) {
+        payload.buffalo_price = buffaloToSend.toString();
+      }
+
+      await updateRateChart(payload);
       Alert.alert(t('success'), t('milk rate updated successfully'));
-      setCurrentRate(rate.toString());
+
+      setBaseRate(priceToSend.toString());
     } catch (error) {
       Alert.alert(t('error'), error.error || t('failed to update milk rate'));
     } finally {
@@ -165,7 +269,7 @@ const RateChartScreen = () => {
         }
       >
         <View style={styles.rateContainer}>
-          {/* Current Rate Card - Now Editable */}
+          {/* Current Rate Card - Single visible rate (base) */}
           <View style={styles.currentRateCard}>
             <View style={styles.currentRateHeader}>
               <Icon name="chart-line" size={24} color="#0D47A1" />
@@ -178,8 +282,13 @@ const RateChartScreen = () => {
                 <Text style={styles.rupeeSymbol}>₹</Text>
                 <TextInput
                   style={styles.rateInput}
-                  value={currentRate}
-                  onChangeText={handleRateChange}
+                  value={(() => {
+                    const key = getActiveRateKey();
+                    if (key === 'cow') return cowRate;
+                    if (key === 'buffalo') return buffaloRate;
+                    return baseRate;
+                  })()}
+                  onChangeText={handleDisplayedRateChange}
                   keyboardType="decimal-pad"
                   placeholder="0"
                   placeholderTextColor="#0D47A1"
@@ -191,9 +300,9 @@ const RateChartScreen = () => {
 
           {/* Save Button */}
           <TouchableOpacity 
-            style={[styles.saveButton, (isSaving || !currentRate) && styles.saveButtonDisabled]}
+            style={[styles.saveButton, (isSaving || !baseRate) && styles.saveButtonDisabled]}
             onPress={handleSave}
-            disabled={isSaving || !currentRate}
+            disabled={isSaving || !baseRate}
           >
             {isSaving ? (
               <ActivityIndicator color="#fff" />
