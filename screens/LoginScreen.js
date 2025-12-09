@@ -211,35 +211,34 @@ const LoginScreen = ({ navigation }) => {
 
         <Text style={baseStyles.title}>{t('hello! sign in')}</Text>
 
-        <View style={baseStyles.whiteContainer}>
-          <View style={baseStyles.waveTop} />
+      <View style={baseStyles.whiteContainer}>
+        <View style={baseStyles.waveTop} />
 
-          <View style={styles.inputWrapper}>
-            <View style={[
-              baseStyles.inputContainer,
-              phoneError && styles.inputError,
-              { backgroundColor: '#F5F7FA' }
-            ]}>
-              <Icon name="person" size={20} color="#0D47A1" />
-              <TextInput
-                placeholder={t('phone number')}
-                placeholderTextColor="#666666"
-                value={phoneNumber}
-                onChangeText={handlePhoneNumberChange}
-                style={{
-                  flex: 1,
-                  marginLeft: 12,
-                  fontSize: 16,
-                  color: '#000000',
-                  zIndex: 999,
-                  fontWeight: 'normal',
-                  opacity: 1,
-                  ...(isPhoneValid && styles.phoneInputText),
-                }}
-                keyboardType="phone-pad"
-                maxLength={10}
-              />
-            </View>
+        <View style={styles.inputWrapper}>
+          <View style={[
+            baseStyles.inputContainer,
+            phoneError && styles.inputError,
+            { backgroundColor: '#F5F7FA' }
+          ]}>
+            <TextInput
+              placeholder={t('phone number')}
+              placeholderTextColor="#666666"
+              value={phoneNumber}
+              onChangeText={handlePhoneNumberChange}
+              style={{
+                flex: 1,
+                marginLeft: 12,
+                fontSize: 16,
+                color: '#000000',
+                zIndex: 999,
+                fontWeight: 'normal',
+                opacity: 1,
+                ...(isPhoneValid && styles.phoneInputText),
+              }}
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
+          </View>
             {phoneError ? (
               <Text style={styles.errorText}>{phoneError}</Text>
             ) : (
@@ -249,7 +248,6 @@ const LoginScreen = ({ navigation }) => {
 
           {isOtpSent && (
             <View style={baseStyles.inputContainer}>
-              <Icon name="lock" size={20} color="#0D47A1" />
               <TextInput
                 placeholder={t('enter otp')}
                 placeholderTextColor="#666666"
