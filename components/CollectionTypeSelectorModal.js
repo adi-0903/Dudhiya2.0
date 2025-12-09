@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { getDairyInfo } from '../services/api';
 
 const CollectionTypeSelectorModal = ({
   visible,
@@ -10,6 +11,28 @@ const CollectionTypeSelectorModal = ({
   onSelectProRata
 }) => {
   const { t } = useTranslation();
+
+  const [isFlatRateType, setIsFlatRateType] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    const fetchRateType = async () => {
+      try {
+        const dairyInfo = await getDairyInfo();
+        const rateType = dairyInfo?.rate_type;
+        if (rateType === 'kg_only' || rateType === 'liters_only') {
+          setIsFlatRateType(true);
+        } else {
+          setIsFlatRateType(false);
+        }
+      } catch (e) {
+        // If we cannot fetch, keep Pro Rata enabled by default
+      }
+    };
+
+    fetchRateType();
+  }, [visible]);
 
   return (
     <Modal
@@ -58,8 +81,13 @@ const CollectionTypeSelectorModal = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.optionButton}
-              onPress={onSelectProRata}
+              style={[styles.optionButton, isFlatRateType && styles.disabledOption]}
+              disabled={isFlatRateType}
+              onPress={() => {
+                if (!isFlatRateType) {
+                  onSelectProRata();
+                }
+              }}
             >
               <View style={[styles.optionIconContainer, styles.proRataIconBackground]}>
                 <Icon name="beaker-plus-outline" size={24} color="#fff" />
@@ -153,6 +181,9 @@ const styles = StyleSheet.create({
   },
   proRataIconBackground: {
     backgroundColor: '#0D47A1',
+  },
+  disabledOption: {
+    opacity: 0.4,
   },
   optionTextContainer: {
     alignItems: 'center',

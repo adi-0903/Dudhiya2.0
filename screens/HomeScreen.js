@@ -525,7 +525,7 @@ const HomeScreen = () => {
             <View style={styles.menuRow}>
               <TouchableOpacity 
                 style={[styles.menuBox, !menuItems[2].subtitle && styles.menuBoxCompact]}
-                onPress={() => setShowCollectionTypeModal(true)}
+                onPress={() => navigation.navigate(menuItems[2].screen)}
               >
                 <View style={[styles.iconBox, !menuItems[2].subtitle && styles.iconBoxCompact]}>
                   <Icon name={menuItems[2].icon} size={24} color="#0D47A1" />
