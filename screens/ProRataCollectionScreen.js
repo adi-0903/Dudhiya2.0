@@ -340,6 +340,15 @@ const ProRataCollectionScreen = ({ navigation }) => {
     });
   };
 
+  const hasIncompleteThresholdRow = (thresholds) => {
+    if (!Array.isArray(thresholds)) return false;
+    return thresholds.some((t) => {
+      const thresholdFilled = String(t?.threshold ?? '').trim() !== '';
+      const rateFilled = String(t?.rate ?? '').trim() !== '';
+      return (thresholdFilled || rateFilled) && !(thresholdFilled && rateFilled);
+    });
+  };
+
   const isRateChartSet = isValidThresholdList(fatStepUpThresholds) && isValidThresholdList(snfStepDownThresholds);
 
   useEffect(() => {
@@ -2615,7 +2624,22 @@ const ProRataCollectionScreen = ({ navigation }) => {
                 <Text style={[styles.modalButtonText, styles.cancelButtonText]}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton]}
+                style={[
+                  styles.modalButton,
+                  styles.confirmButton,
+                  (
+                    hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                    hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                    !isValidThresholdList(tempFatStepUpThresholds) ||
+                    !isValidThresholdList(tempSnfStepDownThresholds)
+                  ) && styles.disabledButton,
+                ]}
+                disabled={
+                  hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                  hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                  !isValidThresholdList(tempFatStepUpThresholds) ||
+                  !isValidThresholdList(tempSnfStepDownThresholds)
+                }
                 onPress={handleButtonPress(async () => {
                   try {
                     const payload = {

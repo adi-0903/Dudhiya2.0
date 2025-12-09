@@ -255,6 +255,15 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
     });
   };
 
+  const hasIncompleteThresholdRow = (thresholds) => {
+    if (!Array.isArray(thresholds)) return false;
+    return thresholds.some((t) => {
+      const thresholdFilled = String(t?.threshold ?? '').trim() !== '';
+      const rateFilled = String(t?.rate ?? '').trim() !== '';
+      return (thresholdFilled || rateFilled) && !(thresholdFilled && rateFilled);
+    });
+  };
+
   const isRateChartSet = isValidThresholdList(fatStepUpThresholds) && isValidThresholdList(snfStepDownThresholds);
 
   // Helpers: resolve applied rate from Fat thresholds (value >= threshold)
@@ -2341,7 +2350,22 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
                   <Text style={[styles.modalButtonText, styles.cancelButtonText]}>{t('cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.modalButton, styles.confirmButton]}
+                  style={[
+                    styles.modalButton,
+                    styles.confirmButton,
+                    (
+                      hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                      hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                      !isValidThresholdList(tempFatStepUpThresholds) ||
+                      !isValidThresholdList(tempSnfStepDownThresholds)
+                    ) && styles.disabledButton,
+                  ]}
+                  disabled={
+                    hasIncompleteThresholdRow(tempFatStepUpThresholds) ||
+                    hasIncompleteThresholdRow(tempSnfStepDownThresholds) ||
+                    !isValidThresholdList(tempFatStepUpThresholds) ||
+                    !isValidThresholdList(tempSnfStepDownThresholds)
+                  }
                   onPress={() => {
                     // Apply temporary settings to main state without hitting global endpoints
                     setFatSnfRatio(tempFatSnfRatio);
