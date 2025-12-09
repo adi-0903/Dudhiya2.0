@@ -322,7 +322,7 @@ export const setMarketPrice = async (price) => {
     if (!price || price <= 0) {
       throw { error: 'Price must be greater than 0' };
     }
-    const response = await api.post(ENDPOINTS.MARKET_PRICES, { price });
+    const response = await api.patch(ENDPOINTS.MARKET_PRICES, { price });
     return response.data;
   } catch (error) {
     throw error;
@@ -340,12 +340,33 @@ export const getRateChart = async () => {
 
 export const updateRateChart = async (data) => {
   try {
-    if (!data.currentRate || data.currentRate <= 0) {
+    const { price, cow_price, buffalo_price } = data;
+
+    const base = parseFloat(price);
+    const cow = cow_price != null && cow_price !== '' ? parseFloat(cow_price) : null;
+    const buffalo = buffalo_price != null && buffalo_price !== '' ? parseFloat(buffalo_price) : null;
+
+    if (isNaN(base) || base <= 0) {
       throw { error: 'Price must be greater than 0' };
     }
-    const response = await api.post(ENDPOINTS.MARKET_PRICES, {
-      price: data.currentRate
-    });
+
+    const payload = { price: base };
+
+    if (cow != null && !isNaN(cow)) {
+      if (cow <= 0) {
+        throw { error: 'Cow price must be greater than 0' };
+      }
+      payload.cow_price = cow;
+    }
+
+    if (buffalo != null && !isNaN(buffalo)) {
+      if (buffalo <= 0) {
+        throw { error: 'Buffalo price must be greater than 0' };
+      }
+      payload.buffalo_price = buffalo;
+    }
+
+    const response = await api.post(ENDPOINTS.MARKET_PRICES, payload);
     return response.data;
   } catch (error) {
     throw error;

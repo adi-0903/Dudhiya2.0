@@ -26,11 +26,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 
 const CollectionScreen = ({ navigation }) => {
+  const ANIMAL_TYPE_STORAGE_KEY = '@selected_animal_type';
+
   const [walletBalance, setWalletBalance] = useState("₹8"); // Replace with actual wallet balance
   const [fat, setFat] = useState('6.5');
   const [snf, setSnf] = useState(DEFAULT_DAIRY_SETTINGS.baseSnf);
   const [currentRate, setCurrentRate] = useState(null);
   const [isLoadingRate, setIsLoadingRate] = useState(true);
+  const [marketPriceData, setMarketPriceData] = useState(null);
   const [showSnfModal, setShowSnfModal] = useState(false);
   const [snfError, setSnfError] = useState('');
   const [selectedTime, setSelectedTime] = useState('morning'); // 'morning' or 'evening'
@@ -75,6 +78,8 @@ const CollectionScreen = ({ navigation }) => {
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
   const [showInputLimitPopup, setShowInputLimitPopup] = useState(false);
   const [inputLimitMessage, setInputLimitMessage] = useState('');
+  const [showAnimalPricePopup, setShowAnimalPricePopup] = useState(false);
+  const [missingAnimalType, setMissingAnimalType] = useState(null);
   const { handleButtonPress } = useKeyboardDismiss();
   // Confirmation modal state for Base SNF toggle
   const [showBaseSnfConfirm, setShowBaseSnfConfirm] = useState(false);
@@ -139,6 +144,78 @@ const CollectionScreen = ({ navigation }) => {
 
     loadSavedLanguage();
   }, [i18n]);
+
+  useEffect(() => {
+    const loadSavedAnimalType = async () => {
+      try {
+        const savedType = await AsyncStorage.getItem(ANIMAL_TYPE_STORAGE_KEY);
+        if (savedType) {
+          setSelectedAnimal(savedType);
+        }
+      } catch (error) {
+        console.error('Error loading saved animal type:', error);
+      }
+    };
+
+    loadSavedAnimalType();
+  }, []);
+
+  useEffect(() => {
+    if (!marketPriceData) {
+      setCurrentRate(0);
+      setShowAnimalPricePopup(false);
+      setMissingAnimalType(null);
+      return;
+    }
+
+    // Always clear any previous animal-specific popup state before recalculating
+    setShowAnimalPricePopup(false);
+    setMissingAnimalType(null);
+
+    const basePrice = parseFloat(marketPriceData.price || '0') || 0;
+    const cowPrice = marketPriceData.cow_price ? parseFloat(marketPriceData.cow_price) : null;
+    const buffaloPrice = marketPriceData.buffalo_price ? parseFloat(marketPriceData.buffalo_price) : null;
+
+    // Resolve the effective rate type from latest dairy settings, falling back to tempRateType
+    const resolvedRateType = (dairyDetails?.rate_type || tempRateType || DEFAULT_DAIRY_SETTINGS.rateType);
+    const flatRate = isFlatRateType(resolvedRateType);
+
+    if (!flatRate) {
+      setCurrentRate(basePrice);
+      return;
+    }
+
+    const normalizedAnimal = (selectedAnimal || '').toLowerCase().replace(/\s+/g, '');
+
+    if (normalizedAnimal === 'cow+buffalo' || normalizedAnimal === 'cow_buffalo' || !normalizedAnimal) {
+      setCurrentRate(basePrice);
+      return;
+    }
+
+    if (normalizedAnimal === 'cow') {
+      if (!cowPrice || isNaN(cowPrice) || cowPrice <= 0) {
+        setCurrentRate(0);
+        setMissingAnimalType('cow');
+        setShowAnimalPricePopup(true);
+        return;
+      }
+      setCurrentRate(cowPrice);
+      return;
+    }
+
+    if (normalizedAnimal === 'buffalo') {
+      if (!buffaloPrice || isNaN(buffaloPrice) || buffaloPrice <= 0) {
+        setCurrentRate(0);
+        setMissingAnimalType('buffalo');
+        setShowAnimalPricePopup(true);
+        return;
+      }
+      setCurrentRate(buffaloPrice);
+      return;
+    }
+
+    setCurrentRate(basePrice);
+  }, [marketPriceData, selectedAnimal, tempRateType, dairyDetails]);
 
   // Add useFocusEffect to fetch rate when screen comes into focus
   useFocusEffect(
@@ -274,10 +351,14 @@ const CollectionScreen = ({ navigation }) => {
     try {
       setIsLoadingRate(true);
       const response = await getCurrentMarketPrice();
-      if (response && response.price) {
-        setCurrentRate(response.price);
+      if (response) {
+        setMarketPriceData(response);
+      } else {
+        setMarketPriceData(null);
+        setCurrentRate(0);
       }
     } catch (error) {
+      setMarketPriceData(null);
       setCurrentRate(0);
     } finally {
       setIsLoadingRate(false);
@@ -945,8 +1026,6 @@ const CollectionScreen = ({ navigation }) => {
     }
   }, [clr, fatPercent, selectedRadios.clr, clrConversionFactor]);
 
-  console.log('Current Rate:', currentRate); // Debugging log
-
   const isFlatRateMode = isFlatRateType(tempRateType);
   const isKgOnlyMode = tempRateType === 'kg_only';
   const isLitersOnlyMode = tempRateType === 'liters_only';
@@ -1269,18 +1348,52 @@ const CollectionScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>{t('collection')}</Text>
       </View>
 
-      {/* Popup Card for Adding Milk Rate */}
-      {currentRate === 0 && (
+      {/* Popup Card for Adding Milk Rate (no rate set at all) */}
+      {currentRate === 0 && !showAnimalPricePopup && (
         <View style={styles.popupCardOverlay}>
           <View style={styles.popupCard}>
             <View style={styles.popupIconContainer}>
               <Icon name="alert-circle-outline" style={styles.iconStyle} />
             </View>
-            <Text style={styles.popupTitle}>Milk Rate Required</Text>
-            <Text style={styles.popupText}>Please set the milk rate before adding collection.</Text>
+            <Text style={styles.popupTitle}>{t('milk rate required')}</Text>
+            <Text style={styles.popupText}>{t('please set the milk rate before adding collection.')}</Text>
             <TouchableOpacity
               style={styles.addRateButton}
               onPress={() => {
+                navigation.navigate('RateChart');
+              }}
+            >
+              <Text style={styles.addRateButtonText}>{t('set milk rate')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Popup Card for missing animal-specific milk rate */}
+      {showAnimalPricePopup && (
+        <View style={styles.popupCardOverlay}>
+          <View style={styles.popupCard}>
+            <View style={styles.popupIconContainer}>
+              <Icon name="alert-circle-outline" style={styles.iconStyle} />
+            </View>
+            <Text style={styles.popupTitle}>
+              {missingAnimalType === 'cow'
+                ? t('cow milk rate required')
+                : missingAnimalType === 'buffalo'
+                  ? t('buffalo milk rate required')
+                  : t('milk rate required')}
+            </Text>
+            <Text style={styles.popupText}>
+              {missingAnimalType === 'cow'
+                ? t('please set the cow milk rate before adding collection.')
+                : missingAnimalType === 'buffalo'
+                  ? t('please set the buffalo milk rate before adding collection.')
+                  : t('please set the milk rate before adding collection.')}
+            </Text>
+            <TouchableOpacity
+              style={styles.addRateButton}
+              onPress={() => {
+                setShowAnimalPricePopup(false);
                 navigation.navigate('RateChart');
               }}
             >
@@ -1705,7 +1818,11 @@ const CollectionScreen = ({ navigation }) => {
                   key={animal}
                   style={styles.animalOption}
                   onPress={() => {
-                    setSelectedAnimal(animal.toLowerCase());
+                    const value = animal.toLowerCase();
+                    setSelectedAnimal(value);
+                    AsyncStorage.setItem(ANIMAL_TYPE_STORAGE_KEY, value).catch((error) => {
+                      console.error('Error saving animal type:', error);
+                    });
                     setShowAnimalModal(false);
                   }}
                 >

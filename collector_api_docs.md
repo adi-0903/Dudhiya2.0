@@ -59,6 +59,8 @@ Model: `MarketMilkPrice`
 {
   "id": 1,
   "price": "42.50",
+  "cow_price": "43.00",        // optional, can be null
+  "buffalo_price": "47.00",   // optional, can be null
   "is_active": true,
   "created_at": "2024-01-01T10:00:00Z",
   "updated_at": "2024-01-01T10:00:00Z"
@@ -78,6 +80,8 @@ Model: `MarketMilkPrice`
 {
   "id": 1,
   "price": "42.50",
+  "cow_price": "43.00",        // may be null if not set
+  "buffalo_price": "47.00",   // may be null if not set
   "is_active": true,
   "created_at": "...",
   "updated_at": "..."
@@ -103,13 +107,17 @@ Model: `MarketMilkPrice`
 
 ```json
 {
-  "price": "45.00"
+  "price": "45.00",
+  "cow_price": "46.00",        // optional
+  "buffalo_price": "50.00"     // optional
 }
 ```
 
 Validation:
 
 - `price` must be `> 0`.
+- If provided, `cow_price` must be `> 0`.
+- If provided, `buffalo_price` must be `> 0`.
 
 **Response 201**: Created object (same schema as above).
 

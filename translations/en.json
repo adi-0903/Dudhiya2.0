@@ -293,6 +293,12 @@
     "share this code with friends and earn ₹100 when they use it! your friend will also get ₹50!": "Share this code with friends and earn ₹100 when they use it! Your friend will also get ₹50!",
 
     "you have not set milk rate. please set the milk rate.": "You have not set milk rate. Please set the milk rate.",
+    "milk rate required": "Milk Rate Required",
+    "please set the milk rate before adding collection.": "Please set the milk rate before adding collection.",
+    "cow milk rate required": "Cow Milk Rate Required",
+    "buffalo milk rate required": "Buffalo Milk Rate Required",
+    "please set the cow milk rate before adding collection.": "Please set the cow milk rate before adding collection.",
+    "please set the buffalo milk rate before adding collection.": "Please set the buffalo milk rate before adding collection.",
 
     "duplicate collection": "Duplicate Collection",
     "an identical collection already exists for this customer": "An identical collection already exists for this supplier",

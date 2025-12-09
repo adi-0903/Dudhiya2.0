@@ -255,6 +255,12 @@
     "dairy address": "डेयरी का पता",
     "rate type": "रेट प्रकार",
     "you have not set milk rate. please set the milk rate.": "आपने अपनी दूध की दर सेट नहीं की है। कृपया दूध की दर सेट करें।",
+    "milk rate required": "दूध रेट आवश्यक है",
+    "please set the milk rate before adding collection.": "कलेक्शन जोड़ने से पहले कृपया दूध रेट सेट करें।",
+    "cow milk rate required": "गाय की दूध रेट आवश्यक है",
+    "buffalo milk rate required": "भैंस की दूध रेट आवश्यक है",
+    "please set the cow milk rate before adding collection.": "कलेक्शन जोड़ने से पहले कृपया गाय की दूध रेट सेट करें।",
+    "please set the buffalo milk rate before adding collection.": "कलेक्शन जोड़ने से पहले कृपया भैंस की दूध रेट सेट करें।",
 
     "enter dairy name": "डेयरी का नाम दर्ज करें",
     "enter dairy address": "डेयरी का पता दर्ज करें",
