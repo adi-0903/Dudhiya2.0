@@ -256,9 +256,36 @@ const CollectionScreen = ({ navigation }) => {
     const amount = parseFloat(data.amount);
     if (!amount || Number.isNaN(amount)) return '0.00';
 
-    const divisor = data.measured === 'liters'
-      ? parseFloat(data.liters)
-      : parseFloat(data.kg);
+    // Determine divisor for average rate:
+    // - For KG-measured collections, always divide by KG.
+    // - For fat-based collections (non-zero fat percentage) that are marked as
+    //   measured in liters, use KG so that the average rate is per KG.
+    // - For pure liters-only collections (fat_percentage is 0), keep using liters
+    //   so that the average rate matches the per-liter milk rate.
+    const fatPercentage =
+      data.fat_percentage !== undefined && data.fat_percentage !== null
+        ? parseFloat(data.fat_percentage)
+        : 0;
+
+    let divisor;
+
+    if (data.measured === 'kg') {
+      divisor = parseFloat(data.kg);
+    } else if (data.measured === 'liters') {
+      if (!Number.isNaN(fatPercentage) && fatPercentage > 0) {
+        // Fat-based (fat_snf / fat_clr) collections -> per KG average rate
+        divisor = parseFloat(data.kg);
+      } else {
+        // Liters-only collections -> per liter average rate
+        divisor = parseFloat(data.liters);
+      }
+    } else {
+      // Fallback: prefer KG, otherwise use liters
+      divisor = parseFloat(data.kg);
+      if (!divisor || Number.isNaN(divisor)) {
+        divisor = parseFloat(data.liters);
+      }
+    }
 
     if (!divisor || Number.isNaN(divisor)) return '0.00';
 
