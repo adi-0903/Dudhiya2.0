@@ -1,12 +1,8 @@
 package com.elusifataehyung.MilkManagementApp
 import expo.modules.splashscreen.SplashScreenManager
 
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -25,7 +21,6 @@ class MainActivity : ReactActivity() {
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
     super.onCreate(null)
-    enableEdgeToEdgeSystemBars()
   }
 
   /**
@@ -66,25 +61,5 @@ class MainActivity : ReactActivity() {
       // Use the default back button implementation on Android S
       // because it's doing more than [Activity.moveTaskToBack] in fact.
       super.invokeDefaultOnBackPressed()
-  }
-
-  private fun enableEdgeToEdgeSystemBars() {
-      WindowCompat.setDecorFitsSystemWindows(window, false)
-
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-          window.statusBarColor = Color.TRANSPARENT
-          window.navigationBarColor = Color.TRANSPARENT
-      }
-
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-          window.attributes = window.attributes.apply {
-              layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-          }
-      }
-
-      WindowInsetsControllerCompat(window, window.decorView).let { controller ->
-          controller.isAppearanceLightStatusBars = false
-          controller.isAppearanceLightNavigationBars = false
-      }
   }
 }
