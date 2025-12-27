@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TouchableWithoutFeedback,
   Platform,
   Linking,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
@@ -252,6 +253,28 @@ const EditCollectionScreen = ({ route, navigation }) => {
   const isFlatRateMode = isFlatRateType(rateTypePickerValue);
   const isKgOnlyMode = rateTypePickerValue === 'kg_only';
   const isLitersOnlyMode = rateTypePickerValue === 'liters_only';
+
+  // Ref for ScrollView and input positions to enable auto-scroll on focus
+  const scrollViewRef = useRef(null);
+  const inputLayoutsRef = useRef({});
+
+  const handleInputLayout = (field, event) => {
+    const { y } = event.nativeEvent.layout;
+    inputLayoutsRef.current[field] = y;
+  };
+
+  const scrollToInput = (field) => {
+    const scrollView = scrollViewRef.current;
+    const y = inputLayoutsRef.current[field];
+
+    if (!scrollView || y === undefined) return;
+
+    // Offset so the input is comfortably above the keyboard and header
+    const offset = 120;
+    const targetY = y - offset;
+
+    scrollView.scrollTo({ y: targetY > 0 ? targetY : 0, animated: true });
+  };
 
   // Keep the weight field aligned with the current dairy rate type and loaded collection
   // data. When rate type is liters_only, prefer the collection's liters value; otherwise
@@ -1296,12 +1319,18 @@ const EditCollectionScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         {/* Customer Search Section */}
         <Text style={styles.searchTitle}>{t('search customers')}</Text>
         <View style={styles.customerSearchContainer}>
@@ -1431,7 +1460,10 @@ const EditCollectionScreen = ({ route, navigation }) => {
 
         {/* Weight and Fat % Row */}
         <View style={styles.row}>
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('weight', event)}
+          >
             <Text style={styles.label}>{isLitersOnlyMode ? 'Liters' : 'Weight (kg)'}</Text>
             <TextInput
               value={formData.weight}
@@ -1453,10 +1485,14 @@ const EditCollectionScreen = ({ route, navigation }) => {
               placeholder="0.00"
               placeholderTextColor="#B0B0B0"
               error={errors.weight}
+              onFocus={() => scrollToInput('weight')}
             />
           </View>
 
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('fat_percentage', event)}
+          >
             <Text style={styles.label}>Fat %</Text>
             <TextInput
               value={formData.fat_percentage}
@@ -1483,13 +1519,17 @@ const EditCollectionScreen = ({ route, navigation }) => {
               placeholder="1.0 - 15.0"
               placeholderTextColor="#B0B0B0"
               editable={!isFlatRateMode}
+              onFocus={() => scrollToInput('fat_percentage')}
             />
           </View>
         </View>
 
         {/* SNF Input Field */}
         <View style={styles.row}>
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('snf_percentage', event)}
+          >
             <TouchableOpacity 
               style={[
                 styles.labelWithRadio,
@@ -1537,13 +1577,18 @@ const EditCollectionScreen = ({ route, navigation }) => {
               placeholder="1.0 - 15.0"
               placeholderTextColor="#B0B0B0"
               editable={selectedRadios.snf && !isFlatRateMode}
+              onFocus={() => scrollToInput('snf_percentage')}
             />
             {errors.snf_percentage && (
               <Text style={styles.errorText}>{errors.snf_percentage}</Text>
             )}
           </View>
 
-          <View style={styles.inputGroup} top="8">
+          <View
+            style={styles.inputGroup}
+            top="8"
+            onLayout={(event) => handleInputLayout('milk_rate', event)}
+          >
             <Text style={styles.label}>Milk Rate</Text>
             <TextInput
               value={formData.milk_rate}
@@ -1563,13 +1608,17 @@ const EditCollectionScreen = ({ route, navigation }) => {
               keyboardType="decimal-pad"
               style={styles.textInput}
               placeholder="₹50.00"
+              onFocus={() => scrollToInput('milk_rate')}
             />
           </View>
         </View>
 
         {/* CLR Input Field */}
         <View style={styles.row}>
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('clr', event)}
+          >
             <TouchableOpacity 
               style={[
                 styles.labelWithRadio,
@@ -1614,6 +1663,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
               placeholder="0.00"
               placeholderTextColor="#B0B0B0"
               editable={selectedRadios.clr && !isFlatRateMode}
+              onFocus={() => scrollToInput('clr')}
             />
             {errors.clr && (
               <Text style={styles.errorText}>{errors.clr}</Text>
@@ -1657,7 +1707,8 @@ const EditCollectionScreen = ({ route, navigation }) => {
           <Text style={styles.nextButtonText}>{t('next')}</Text>
           <Icon name="arrow-right" size={20} color="#fff" />
         </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Preview Modal */}
       <Modal
@@ -2969,7 +3020,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   contentContainer: {
-    paddingBottom: 140,
+    paddingBottom: 60,
   },
   deleteHeaderButton: {
     padding: 8,
