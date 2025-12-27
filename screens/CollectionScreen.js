@@ -3095,7 +3095,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginLeft: -13,
+    marginLeft: -15,
   },
   inputLabel: {
     fontSize: 15,  // Changed from 13 to 15

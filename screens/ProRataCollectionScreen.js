@@ -3648,7 +3648,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginLeft: -13,
+    marginLeft: -14,
   },
   verticalInputGroup: {
     flexDirection: 'column',
