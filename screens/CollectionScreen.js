@@ -2095,7 +2095,7 @@ const CollectionScreen = ({ navigation }) => {
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>SNF %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage)}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage).toFixed(2)}</Text>
                         </View>
                       </View>
                       <View style={styles.previewRow}>
