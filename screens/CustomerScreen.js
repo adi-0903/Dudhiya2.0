@@ -595,7 +595,7 @@ const CustomerScreen = () => {
                     disabled={isUpdateLoading || isFlatRateType}
                   >
                     <Icon name="file-chart-outline" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>{t('View Pro-Rata Report')}</Text>
+                    <Text style={styles.actionButtonText}>{t('view pro-rata report')}</Text>
                   </TouchableOpacity>
                 </View>
               </>
