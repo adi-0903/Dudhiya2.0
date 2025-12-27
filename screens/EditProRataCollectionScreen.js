@@ -191,6 +191,18 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
   const [pendingClrConversion, setPendingClrConversion] = useState(null);
 
   const [dairyDetails, setDairyDetails] = useState(null);
+  const [rateTypePickerValue, setRateTypePickerValue] = useState(DEFAULT_DAIRY_SETTINGS.rateType);
+
+  const getRadiosForRateType = (rateType) => {
+    if (rateType === 'fat_snf') {
+      return { snf: true, clr: false };
+    }
+    if (rateType === 'fat_clr') {
+      return { snf: false, clr: true };
+    }
+    // Default: prefer SNF path if rate type is unknown
+    return { snf: true, clr: false };
+  };
 
   const sortFatThresholds = (items = []) =>
     [...items].sort((a, b) => {
@@ -558,15 +570,40 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
     fetchDairyInfo();
   }, [collectionId]);
 
-  // Add function to fetch dairy info and hydrate rate settings (no-op for per-collection editing)
+  // Fetch dairy info to hydrate rate-type dependent UI (SNF/CLR mode)
+  const applyDairySettings = (settings) => {
+    if (!settings) return;
+
+    setDairyDetails(settings);
+
+    const resolvedRateType = settings.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
+    setRateTypePickerValue(resolvedRateType);
+    setSelectedRadios(getRadiosForRateType(resolvedRateType));
+  };
+
   const fetchDairyInfo = async () => {
+    try {
+      const dairyInfo = await getDairyInfo();
+      if (dairyInfo) {
+        const sanitized = normalizeDairyInfo(dairyInfo);
+        applyDairySettings(sanitized);
+        return sanitized;
+      }
+    } catch (error) {
+      console.error('Error fetching dairy info:', error);
+    }
     return null;
   };
 
   const ensureDairyDetailsForUpdate = async () => {
-    return null;
+    if (dairyDetails) {
+      return dairyDetails;
+    }
+    return await fetchDairyInfo();
   };
 
+  // Per-collection rate settings are handled via the Rate Chart modal; we do not
+  // persist dairy-level settings from this screen.
   const persistDairySettings = async (overrides = {}, options = {}) => {
     return null;
   };
@@ -724,11 +761,6 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
         setSnfStepDownRate(response.snf_step_down_rate?.toString() || '');
       }
 
-      const hasClr = response?.clr !== null && response?.clr !== undefined && response?.clr !== '';
-      if (hasClr) {
-        setSelectedRadios({ snf: false, clr: true });
-      }
-
       // Reset the dirty state after loading the initial values
       setIsDirty(false);
 
@@ -764,23 +796,11 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
   };
 
   const handleSnfRadioPress = () => {
-    setSelectedRadios({ snf: true, clr: false });
-    setFormData(prev => ({
-      ...prev,
-      clr: '',
-      snf_percentage: ''
-    }));
-    setIsDirty(true);
+    // Radios are locked by dairy rate type in this screen; manual toggling is disabled.
   };
 
   const handleClrRadioPress = () => {
-    setSelectedRadios({ snf: false, clr: true });
-    setFormData(prev => ({
-      ...prev,
-      snf_percentage: '',
-      clr: ''
-    }));
-    setIsDirty(true);
+    // Radios are locked by dairy rate type in this screen; manual toggling is disabled.
   };
 
   const handleClrInput = (text) => {

@@ -212,7 +212,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
     loadSavedLanguage();
   }, [i18n]);
 
-  // Rate-type radiobutton helper
+  // Rate-type radio-button helper
   const getRadiosForRateType = (rateType) => {
     if (rateType === 'fat_snf') {
       return { snf: true, clr: false };
@@ -220,6 +220,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
     if (rateType === 'fat_clr') {
       return { snf: false, clr: true };
     }
+    // For flat-rate types (kg_only / liters_only) neither SNF nor CLR is active
     return { snf: false, clr: false };
   };
 
@@ -310,22 +311,76 @@ const EditCollectionScreen = ({ route, navigation }) => {
     fetchDairyInfo(); // Add this line to fetch dairy info
   }, [collectionId]);
 
-  // Add function to fetch dairy info and set radio buttons
+  // Apply dairy settings (mirrors CollectionScreen behaviour for rate type and radios)
+  const applyDairySettings = (settings) => {
+    if (!settings) return;
+
+    setDairyDetails(settings);
+
+    const clrValue = settings.clr_conversion_factor || DEFAULT_DAIRY_SETTINGS.clrConversionFactor;
+    setClrConversionFactor(clrValue);
+    setTempClrConversionFactor(clrValue);
+
+    const ratioValue = settings.fat_snf_ratio || DEFAULT_DAIRY_SETTINGS.fatSnfRatio;
+    setFatSnfRatio(ratioValue);
+    setTempFatSnfRatio(ratioValue);
+
+    const resolvedRateType = settings.rate_type || DEFAULT_DAIRY_SETTINGS.rateType;
+    setRateTypePickerValue(resolvedRateType);
+    setSelectedRadios(getRadiosForRateType(resolvedRateType));
+  };
+
+  // Fetch dairy info and initialize rate-type dependent UI (radios, conversion factors, ratios)
   const fetchDairyInfo = async () => {
     try {
-      return null;
+      const dairyInfo = await getDairyInfo();
+      if (dairyInfo) {
+        const sanitizedInfo = normalizeDairyInfo(dairyInfo);
+        applyDairySettings(sanitizedInfo);
+        return sanitizedInfo;
+      }
     } catch (error) {
       console.error('Error fetching dairy info:', error);
-      return null;
     }
+    return null;
   };
 
   const ensureDairyDetailsForUpdate = async () => {
-    return null;
+    if (dairyDetails?.id) {
+      return dairyDetails;
+    }
+    return await fetchDairyInfo();
   };
 
   const persistDairySettings = async (overrides = {}, options = {}) => {
-    return null;
+    const { skipIfUnchanged = false } = options;
+    try {
+      const current = await ensureDairyDetailsForUpdate();
+      if (!current?.id) {
+        return null;
+      }
+
+      const merged = { ...current, ...overrides };
+      if (
+        skipIfUnchanged &&
+        Object.keys(overrides).every((key) => String(current[key]) === String(merged[key]))
+      ) {
+        return current;
+      }
+
+      const payload = buildDairyUpdatePayload(current, overrides);
+      if (!payload) {
+        return current;
+      }
+
+      const updated = await updateDairyInfo(payload);
+      const sanitized = normalizeDairyInfo(updated);
+      applyDairySettings(sanitized);
+      return sanitized;
+    } catch (error) {
+      console.error('Error saving dairy settings:', error);
+      return null;
+    }
   };
 
   // Define calculateSnfFromClr function before using it in useEffect
@@ -494,8 +549,11 @@ const EditCollectionScreen = ({ route, navigation }) => {
     }
   };
 
-  // Radio button handlers for CLR/SNF
+  // Radio button handlers for CLR/SNF, respecting current rate type
   const handleClrRadioPress = () => {
+    // In flat-rate modes (KG / Liters) CLR/SNF are not applicable
+    if (isFlatRateMode) return;
+
     setSelectedRadios({
       snf: false,
       clr: true
@@ -510,6 +568,9 @@ const EditCollectionScreen = ({ route, navigation }) => {
   };
 
   const handleSnfRadioPress = () => {
+    // In flat-rate modes (KG / Liters) SNF/CLR are not applicable
+    if (isFlatRateMode) return;
+
     setSelectedRadios({
       snf: true,
       clr: false
@@ -1530,12 +1591,11 @@ const EditCollectionScreen = ({ route, navigation }) => {
             style={styles.inputGroup}
             onLayout={(event) => handleInputLayout('snf_percentage', event)}
           >
-            <TouchableOpacity 
+            <View 
               style={[
                 styles.labelWithRadio,
                 (!selectedRadios.snf || isFlatRateMode) && styles.disabledRadioRow
               ]}
-              onPress={handleSnfRadioPress}
             >
               <View style={styles.radioButton}>
                 <View style={selectedRadios.snf ? styles.radioInnerCircleSelected : styles.radioInnerCircle} />
@@ -1548,7 +1608,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
               >
                 SNF %
               </Text>
-            </TouchableOpacity>
+            </View>
             <TextInput
               value={formData.snf_percentage}
               onChangeText={(text) => {
@@ -1619,12 +1679,11 @@ const EditCollectionScreen = ({ route, navigation }) => {
             style={styles.inputGroup}
             onLayout={(event) => handleInputLayout('clr', event)}
           >
-            <TouchableOpacity 
+            <View 
               style={[
                 styles.labelWithRadio,
                 (!selectedRadios.clr || isFlatRateMode) && styles.disabledRadioRow
               ]}
-              onPress={handleClrRadioPress}
             >
               <View style={styles.radioButton}>
                 <View style={selectedRadios.clr ? styles.radioInnerCircleSelected : styles.radioInnerCircle} />
@@ -1637,7 +1696,7 @@ const EditCollectionScreen = ({ route, navigation }) => {
               >
                 CLR
               </Text>
-            </TouchableOpacity>
+            </View>
             <TextInput
               value={formData.clr}
               onChangeText={(text) => {
