@@ -424,11 +424,12 @@ const CollectionScreen = ({ navigation }) => {
 
     const sanitized = (rawValue || '').replace(/[^0-9.]/g, '');
 
-    // Helper to truncate (not round) to the requested decimal places
+    // Helper to format to the requested decimal places using decimal rounding.
+    // Using toFixed directly avoids floating-point floor issues that caused
+    // values like 9.2 to appear as 9.19 due to binary representation.
     const toFixedTruncate = (num) => {
-      const factor = Math.pow(10, decimals);
-      const truncated = Math.floor(num * factor) / factor;
-      return truncated.toFixed(decimals);
+      if (num == null || isNaN(num)) return '';
+      return Number(num).toFixed(decimals);
     };
 
     // If user already entered a decimal point, normalize, optionally scale down, and clamp
@@ -2094,7 +2095,7 @@ const CollectionScreen = ({ navigation }) => {
                         </View>
                         <View style={styles.previewItem}>
                           <Text style={styles.previewLabel}>SNF %</Text>
-                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage)}</Text>
+                          <Text style={styles.previewValue}>{parseFloat(previewData.snf_percentage).toFixed(2)}</Text>
                         </View>
                       </View>
                       <View style={styles.previewRow}>
