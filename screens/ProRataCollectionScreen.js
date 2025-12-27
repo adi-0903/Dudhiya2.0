@@ -1980,9 +1980,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
           <View style={styles.measureRow}>
             <View style={styles.inputGroup}>
               <View style={styles.labelWithRadio}>
-                <View style={[styles.radioButton, !selectedRadios.snf && styles.radioButtonFaded]}>
-                  <View style={[styles.radioCircle, selectedRadios.snf && styles.radioCircleSelected]} />
-                </View>
+                <View style={{ width: 20 }} />
                 <Text style={[styles.inputLabel, !selectedRadios.snf && styles.disabledLabel]}>SNF%</Text>
               </View>
               <TextInput
@@ -2018,9 +2016,7 @@ const ProRataCollectionScreen = ({ navigation }) => {
 
             <View style={[styles.inputGroup, { marginLeft: 12 }]}>
               <View style={styles.labelWithRadio}>
-                <View style={[styles.radioButton, { marginLeft: 6 }, !selectedRadios.clr && styles.radioButtonFaded]}>
-                  <View style={[styles.radioCircle, selectedRadios.clr && styles.radioCircleSelected]} />
-                </View>
+                <View style={{ width: 20 }} />
                 <Text style={[styles.inputLabel, !selectedRadios.clr && styles.disabledLabel]}>CLR</Text>
               </View>
               <TextInput
@@ -3643,16 +3639,16 @@ const styles = StyleSheet.create({
   measureRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 15,
+    gap: 0,
     marginBottom: 20,  // Consistent spacing
-    paddingHorizontal: 15,
-    paddingLeft: 5,  // Added more padding on the left to shift input fields to the right
+    paddingHorizontal: 0,
   },
   inputGroup: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginLeft: -13,
   },
   verticalInputGroup: {
     flexDirection: 'column',

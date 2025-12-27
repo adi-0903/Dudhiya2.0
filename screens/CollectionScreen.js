@@ -1675,10 +1675,15 @@ const CollectionScreen = ({ navigation }) => {
             <View style={styles.measureRow}>
               <View style={styles.inputGroup}>
                 <View style={styles.labelWithRadio}>
-                  <View style={[styles.radioButton, !selectedRadios.snf && styles.radioButtonFaded]}>
-                    <View style={[styles.radioCircle, selectedRadios.snf && styles.radioCircleSelected]} />
-                  </View>
-                  <Text style={[styles.inputLabel, !selectedRadios.snf && styles.disabledLabel]}>SNF%</Text>
+                  <View style={{ width: 20 }} />
+                  <Text
+                    style={[
+                      styles.inputLabel,
+                      !selectedRadios.snf && styles.disabledLabel,
+                    ]}
+                  >
+                    SNF%
+                  </Text>
                 </View>
                 <TextInput
                   style={[
@@ -1713,10 +1718,15 @@ const CollectionScreen = ({ navigation }) => {
 
               <View style={[styles.inputGroup, { marginLeft: 12 }]}>
                 <View style={styles.labelWithRadio}>
-                  <View style={[styles.radioButton, { marginLeft: 6 }, !selectedRadios.clr && styles.radioButtonFaded]}>
-                    <View style={[styles.radioCircle, selectedRadios.clr && styles.radioCircleSelected]} />
-                  </View>
-                  <Text style={[styles.inputLabel, !selectedRadios.clr && styles.disabledLabel]}>CLR</Text>
+                  <View style={{ width: 20 }} />
+                  <Text
+                    style={[
+                      styles.inputLabel,
+                      !selectedRadios.clr && styles.disabledLabel,
+                    ]}
+                  >
+                    CLR
+                  </Text>
                 </View>
                 <TextInput
                   style={[
@@ -3076,15 +3086,16 @@ const styles = StyleSheet.create({
   measureRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 15,
+    gap: 0,
     marginBottom: 20,  // Consistent spacing
-    paddingHorizontal: 5,
+    paddingHorizontal: 0,
   },
   inputGroup: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginLeft: -13,
   },
   inputLabel: {
     fontSize: 15,  // Changed from 13 to 15
