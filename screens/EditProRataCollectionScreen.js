@@ -169,6 +169,7 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
   const [reportPaths, setReportPaths] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const scrollViewRef = useRef(null);
+  const inputLayoutsRef = useRef({});
 
   // Rate Chart modal and threshold-based step-rate settings
   const [showRateChartModal, setShowRateChartModal] = useState(false);
@@ -265,6 +266,23 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
   };
 
   const isRateChartSet = isValidThresholdList(fatStepUpThresholds) && isValidThresholdList(snfStepDownThresholds);
+
+  const handleInputLayout = (field, event) => {
+    const { y } = event.nativeEvent.layout;
+    inputLayoutsRef.current[field] = y;
+  };
+
+  const scrollToInput = (field) => {
+    const scrollView = scrollViewRef.current;
+    const y = inputLayoutsRef.current[field];
+
+    if (!scrollView || y === undefined) return;
+
+    const offset = 120;
+    const targetY = y - offset;
+
+    scrollView.scrollTo({ y: targetY > 0 ? targetY : 0, animated: true });
+  };
 
   // Helpers: resolve applied rate from Fat thresholds (value >= threshold)
   const resolveRateFromFatThresholds = (value, thresholds) => {
@@ -1676,7 +1694,7 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
       >
         {/* Customer Search Section */}
         <Text style={styles.searchTitle}>{t('search customers')}</Text>
@@ -1790,7 +1808,10 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
 
         {/* Weight and Fat % Row */}
         <View style={styles.row}>
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('weight', event)}
+          >
             <Text style={styles.label}>Weight (kg)</Text>
             <TextInput
               value={formData.weight}
@@ -1810,10 +1831,14 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
               keyboardType="decimal-pad"
               style={styles.textInput}
               error={errors.weight}
+              onFocus={() => scrollToInput('weight')}
             />
           </View>
 
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('fat_percentage', event)}
+          >
             <Text style={styles.label}>Fat %</Text>
             <TextInput
               value={formData.fat_percentage}
@@ -1839,13 +1864,17 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
               error={errors.fat_percentage}
               placeholder="1.0 - 15.0"
               placeholderTextColor="#999"
+              onFocus={() => scrollToInput('fat_percentage')}
             />
           </View>
         </View>
 
         {/* SNF Input Field */}
         <View style={styles.row}>
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('snf_percentage', event)}
+          >
             <TouchableOpacity 
               style={styles.labelWithRadio}
               onPress={handleSnfRadioPress}
@@ -1883,13 +1912,18 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
               placeholder="1.0 - 15.0"
               placeholderTextColor="#999"
               editable={selectedRadios.snf}
+              onFocus={() => scrollToInput('snf_percentage')}
             />
             {errors.snf_percentage && (
               <Text style={styles.errorText}>{errors.snf_percentage}</Text>
             )}
           </View>
 
-          <View style={styles.inputGroup} top="8">
+          <View
+            style={styles.inputGroup}
+            top="8"
+            onLayout={(event) => handleInputLayout('milk_rate', event)}
+          >
             <Text style={styles.label}>Milk Rate</Text>
             <TextInput
               value={formData.milk_rate}
@@ -1909,13 +1943,17 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
               keyboardType="decimal-pad"
               style={styles.textInput}
               placeholder="₹50.00"
+              onFocus={() => scrollToInput('milk_rate')}
             />
           </View>
         </View>
 
         {/* CLR Input Field */}
         <View style={styles.row}>
-          <View style={styles.inputGroup}>
+          <View
+            style={styles.inputGroup}
+            onLayout={(event) => handleInputLayout('clr', event)}
+          >
             <TouchableOpacity 
               style={styles.labelWithRadio}
               onPress={handleClrRadioPress}
@@ -1938,6 +1976,7 @@ const EditProRataCollectionScreen = ({ route, navigation }) => {
               placeholder="0.00"
               placeholderTextColor="#ccc"
               editable={selectedRadios.clr}
+              onFocus={() => scrollToInput('clr')}
             />
             {errors.clr && (
               <Text style={styles.errorText}>{errors.clr}</Text>
