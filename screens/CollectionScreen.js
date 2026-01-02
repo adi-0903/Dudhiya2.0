@@ -734,10 +734,11 @@ const CollectionScreen = ({ navigation }) => {
         const formattedMilkType = milkType === 'cow+buffalo' ? 'cow_buffalo' : milkType;
 
         // Flat rate types: kg_only and liters_only
+        // For these, do NOT auto-convert between kg and liters.
+        // Send the entered value as-is and leave the other unit empty/zero.
         if (tempRateType === 'kg_only') {
-          const weightKg = parseFloat(weight);
-          const liters = (weightKg / 1.02).toFixed(2);
-          const amount = (weightKg * milkRate).toFixed(3);
+          const value = parseFloat(weight);
+          const amount = (value * milkRate).toFixed(3);
           const solidWeight = (amount / milkRate).toFixed(3);
 
           const collectionData = {
@@ -746,8 +747,8 @@ const CollectionScreen = ({ navigation }) => {
             customer: selectedCustomer.id,
             collection_date: new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0],
             measured: 'kg',
-            liters: liters.toString(),
-            kg: weightKg.toString(),
+            liters: value.toString(),
+            kg: value.toString(),
             fat_percentage: '0',
             fat_kg: '0',
             clr: '',
@@ -767,11 +768,9 @@ const CollectionScreen = ({ navigation }) => {
         }
 
         if (tempRateType === 'liters_only') {
-          const liters = parseFloat(weight);
-          const rawKg = liters * 1.02;
-          const weightKg = parseFloat(rawKg.toFixed(2));
-          const amount = (liters * milkRate).toFixed(3);
-          const solidWeight = weightKg.toFixed(3);
+          const value = parseFloat(weight);
+          const amount = (value * milkRate).toFixed(3);
+          const solidWeight = (amount / milkRate).toFixed(3);
 
           const collectionData = {
             collection_time: selectedTime.toLowerCase(),
@@ -779,8 +778,8 @@ const CollectionScreen = ({ navigation }) => {
             customer: selectedCustomer.id,
             collection_date: new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0],
             measured: 'liters',
-            liters: liters.toString(),
-            kg: weightKg.toFixed(2).toString(),
+            liters: value.toString(),
+            kg: value.toString(),
             fat_percentage: '0',
             fat_kg: '0',
             clr: '',
