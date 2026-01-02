@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL = "https://dudhiya-backendadmin.netpy.in/api";
 
 // TEST
-//const BASE_URL = "https://3c0c6860ec46.ngrok-free.app/api";
+//const BASE_URL = "https://cf2764380268.ngrok-free.app/api";
 
 // API Endpoints
 const ENDPOINTS = {
